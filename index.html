@@ -118,6 +118,7 @@
                 this.rounds = 24; // Увеличенное число раундов
                 this.saltLength = 32; // 256-bit соль для PBKDF2
                 this.minKeyLength = 8; // Минимальная длина ключа
+                this.blockSize = 64; // Размер блока для обработки
             }
 
             // Инициализация системы
@@ -160,7 +161,7 @@
                     const textBytes = new TextEncoder().encode(plaintext);
                     
                     // Генерация ключевого материала
-                    const keyMaterial = await this.deriveKey(key, salt, textBytes.length * 2 + 64);
+                    const keyMaterial = await this.deriveKey(key, salt, this.blockSize * 2);
                     
                     // Шифрование
                     const ciphertext = await this.processData(iv, textBytes, keyMaterial, true);
@@ -174,7 +175,7 @@
                     document.getElementById('status').textContent = "Шифрование завершено";
                     return this.bytesToBase64(result);
                 } catch (e) {
-                    document.getElementById('status').textContent = "Ошибка шифрования";
+                    document.getElementById('status').textContent = "Ошибка шифрования: " + e.message;
                     throw e;
                 }
             }
@@ -201,7 +202,7 @@
                     const receivedMac = data.slice(data.length - this.macLength);
                     
                     // Генерация ключевого материала
-                    const keyMaterial = await this.deriveKey(key, salt, ciphertext.length * 2 + 64);
+                    const keyMaterial = await this.deriveKey(key, salt, this.blockSize * 2);
                     
                     // Проверка MAC
                     const computedMac = await this.generateHMAC(iv, ciphertext, keyMaterial);
@@ -215,7 +216,7 @@
                     document.getElementById('status').textContent = "Расшифровка завершена";
                     return new TextDecoder().decode(plaintextBytes);
                 } catch (e) {
-                    document.getElementById('status').textContent = "Ошибка расшифровки";
+                    document.getElementById('status').textContent = "Ошибка расшифровки: " + e.message;
                     throw e;
                 }
             }
@@ -223,28 +224,35 @@
             // Обработка данных (шифрование/расшифровка)
             async processData(iv, data, keyMaterial, encrypt) {
                 const result = new Uint8Array(data.length);
-                const blockSize = 64; // Размер блока для обработки
+                let currentIV = new Uint8Array(iv);
                 
                 // Обработка по блокам
-                for (let blockStart = 0; blockStart < data.length; blockStart += blockSize) {
-                    const blockEnd = Math.min(blockStart + blockSize, data.length);
+                for (let blockStart = 0; blockStart < data.length; blockStart += this.blockSize) {
+                    const blockEnd = Math.min(blockStart + this.blockSize, data.length);
                     const block = data.slice(blockStart, blockEnd);
                     
-                    // Добавление IV к блоку
-                    const processedBlock = new Uint8Array([...iv, ...block]);
+                    // Создаем буфер для обработки (IV + данные)
+                    const processingBlock = new Uint8Array(currentIV.length + block.length);
+                    processingBlock.set(currentIV, 0);
+                    processingBlock.set(block, currentIV.length);
                     
                     // Применение раундов преобразования
                     if (encrypt) {
-                        this.encryptionRounds(processedBlock, keyMaterial);
+                        this.encryptionRounds(processingBlock, keyMaterial);
+                        // Для шифрования: следующий IV - последняя часть обработанного блока
+                        currentIV = processingBlock.slice(processingBlock.length - currentIV.length);
                     } else {
-                        this.decryptionRounds(processedBlock, keyMaterial);
+                        this.decryptionRounds(processingBlock, keyMaterial);
                     }
                     
                     // Сохранение результата (без IV)
-                    result.set(processedBlock.slice(iv.length), blockStart);
+                    const outputBlock = processingBlock.slice(currentIV.length);
+                    result.set(outputBlock, blockStart);
                     
-                    // Обновление IV для следующего блока
-                    iv = processedBlock.slice(processedBlock.length - iv.length);
+                    if (!encrypt && blockStart + this.blockSize < data.length) {
+                        // Для расшифровки следующий IV - текущий зашифрованный блок
+                        currentIV = block.slice(block.length - currentIV.length);
+                    }
                 }
                 
                 return result;
@@ -253,33 +261,19 @@
             // Раунды шифрования
             encryptionRounds(data, keyMaterial) {
                 for (let round = 0; round < this.rounds; round++) {
-                    // Фаза замещения
                     this.substituteBytes(data, keyMaterial, round);
-                    
-                    // Фаза перемешивания
                     this.mixColumns(data, keyMaterial, round);
-                    
-                    // Фаза перестановки
                     this.permuteBytes(data, keyMaterial, round);
-                    
-                    // Добавление ключевого материала
                     this.addRoundKey(data, keyMaterial, round);
                 }
             }
 
-            // Раунды расшифровки
+            // Раунды расшифровки (обратный порядок)
             decryptionRounds(data, keyMaterial) {
                 for (let round = this.rounds - 1; round >= 0; round--) {
-                    // Обратное добавление ключевого материала
                     this.addRoundKey(data, keyMaterial, round, true);
-                    
-                    // Обратная перестановка
                     this.permuteBytes(data, keyMaterial, round, true);
-                    
-                    // Обратное перемешивание
                     this.mixColumns(data, keyMaterial, round, true);
-                    
-                    // Обратное замещение
                     this.substituteBytes(data, keyMaterial, round, true);
                 }
             }
@@ -294,17 +288,15 @@
             }
 
             mixColumns(data, keyMaterial, round, inverse = false) {
-                const size = Math.floor(Math.sqrt(data.length)) || 4;
+                const size = Math.max(4, Math.floor(Math.sqrt(data.length)));
                 for (let col = 0; col < size; col++) {
                     const column = new Uint8Array(size);
                     for (let row = 0; row < size; row++) {
                         column[row] = data[(row * size + col) % data.length];
                     }
                     
-                    // Матричное преобразование
                     const mixed = this.matrixTransform(column, keyMaterial, round, inverse);
                     
-                    // Обратная запись
                     for (let row = 0; row < size; row++) {
                         data[(row * size + col) % data.length] = mixed[row];
                     }
@@ -313,18 +305,73 @@
 
             matrixTransform(column, keyMaterial, round, inverse) {
                 const result = new Uint8Array(column.length);
-                const matrix = this.generateMatrix(keyMaterial, round, column.length);
+                const matrix = this.generateMatrix(keyMaterial, round, column.length, inverse);
                 
                 for (let i = 0; i < column.length; i++) {
                     let val = 0;
                     for (let j = 0; j < column.length; j++) {
-                        if (inverse) {
-                            val ^= this.gfMultiply(matrix[j][i], column[j]);
-                        } else {
-                            val ^= this.gfMultiply(matrix[i][j], column[j]);
-                        }
+                        val ^= this.gfMultiply(matrix[i][j], column[j]);
                     }
                     result[i] = val;
+                }
+                
+                return result;
+            }
+
+            generateMatrix(keyMaterial, round, size, inverse = false) {
+                const matrix = Array.from({length: size}, () => new Uint8Array(size));
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        const keyIndex = (i * size + j + round * 11) % keyMaterial.length;
+                        matrix[i][j] = keyMaterial[keyIndex] || 1;
+                    }
+                }
+                
+                if (inverse) {
+                    // Для обратного преобразования нужно вычислить обратную матрицу
+                    return this.invertMatrix(matrix);
+                }
+                
+                return matrix;
+            }
+
+            invertMatrix(matrix) {
+                const size = matrix.length;
+                const inverse = Array.from({length: size}, () => new Uint8Array(size));
+                
+                // Создаем расширенную матрицу [matrix|I]
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        inverse[i][j] = matrix[i][j];
+                        inverse[i][j + size] = (i === j) ? 1 : 0;
+                    }
+                }
+                
+                // Приведение к ступенчатому виду
+                for (let k = 0; k < size; k++) {
+                    // Нормализация текущей строки
+                    const inv_pivot = this.gfInverse(inverse[k][k]);
+                    for (let j = 0; j < 2 * size; j++) {
+                        inverse[k][j] = this.gfMultiply(inverse[k][j], inv_pivot);
+                    }
+                    
+                    // Исключение
+                    for (let i = 0; i < size; i++) {
+                        if (i !== k && inverse[i][k] !== 0) {
+                            const factor = inverse[i][k];
+                            for (let j = 0; j < 2 * size; j++) {
+                                inverse[i][j] ^= this.gfMultiply(factor, inverse[k][j]);
+                            }
+                        }
+                    }
+                }
+                
+                // Извлечение обратной матрицы
+                const result = Array.from({length: size}, () => new Uint8Array(size));
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        result[i][j] = inverse[i][j + size];
+                    }
                 }
                 
                 return result;
@@ -342,24 +389,46 @@
                 return p & 0xff;
             }
 
-            generateMatrix(keyMaterial, round, size) {
-                const matrix = Array.from({length: size}, () => new Uint8Array(size));
-                for (let i = 0; i < size; i++) {
-                    for (let j = 0; j < size; j++) {
-                        const keyIndex = (i * size + j + round * 11) % keyMaterial.length;
-                        matrix[i][j] = keyMaterial[keyIndex] || 1;
-                    }
+            gfInverse(a) {
+                if (a === 0) return 0;
+                let t = 0, newt = 1;
+                let r = 0x11b, newr = a;
+                
+                while (newr !== 0) {
+                    const quotient = this.gfDivide(r, newr);
+                    [t, newt] = [newt, t ^ this.gfMultiply(quotient, newt)];
+                    [r, newr] = [newr, r ^ this.gfMultiply(quotient, newr)];
                 }
-                return matrix;
+                
+                return t;
+            }
+
+            gfDivide(a, b) {
+                let result = 0;
+                let bitLengthDiff = this.bitLength(a) - this.bitLength(b);
+                
+                while (bitLengthDiff >= 0) {
+                    const shifted = b << bitLengthDiff;
+                    result ^= (1 << bitLengthDiff);
+                    a ^= shifted;
+                    bitLengthDiff = this.bitLength(a) - this.bitLength(b);
+                }
+                
+                return result;
+            }
+
+            bitLength(x) {
+                return x ? 32 - Math.clz32(x) : 0;
             }
 
             permuteBytes(data, keyMaterial, round, inverse = false) {
                 const temp = new Uint8Array(data.length);
                 for (let i = 0; i < data.length; i++) {
+                    const keyByte = keyMaterial[(i + round) % keyMaterial.length];
                     const newPos = inverse ? 
-                        (i * 9 - keyMaterial[(i + round) % keyMaterial.length]) % data.length :
-                        (i * 5 + keyMaterial[(i + round) % keyMaterial.length]) % data.length;
-                    temp[(newPos + data.length) % data.length] = data[i];
+                        (i - keyByte * 5 + data.length) % data.length :
+                        (i + keyByte * 5) % data.length;
+                    temp[newPos] = data[i];
                 }
                 data.set(temp);
             }
@@ -367,11 +436,7 @@
             addRoundKey(data, keyMaterial, round, inverse = false) {
                 for (let i = 0; i < data.length; i++) {
                     const keyIndex = (i + round * 23) % keyMaterial.length;
-                    if (inverse) {
-                        data[i] ^= keyMaterial[keyIndex];
-                    } else {
-                        data[i] ^= keyMaterial[keyIndex] ^ round;
-                    }
+                    data[i] ^= keyMaterial[keyIndex] ^ round;
                 }
             }
 
@@ -450,6 +515,7 @@
             } catch (e) {
                 document.getElementById('status').textContent = `Ошибка: ${e.message}`;
                 document.getElementById('ciphertext').value = '';
+                console.error(e);
             }
         }
 
@@ -462,6 +528,7 @@
             } catch (e) {
                 document.getElementById('status').textContent = `Ошибка: ${e.message}`;
                 document.getElementById('decrypted').value = '';
+                console.error(e);
             }
         }
     </script>
