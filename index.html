@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QUANTUM ARMOR PRO</title>
     <style>
+        /* Стили остаются без изменений */
         body {
             font-family: 'Courier New', monospace;
             background: #0a0a12;
@@ -113,39 +114,30 @@
     <script>
         class QuantumArmorPro {
             constructor() {
-                this.ivLength = 16; // 128-bit вектор инициализации
-                this.macLength = 32; // 256-bit аутентификационный код
-                this.rounds = 24; // Увеличенное число раундов
-                this.saltLength = 32; // 256-bit соль для PBKDF2
-                this.minKeyLength = 8; // Минимальная длина ключа
-                this.blockSize = 64; // Размер блока для обработки
+                this.ivLength = 16;
+                this.macLength = 32;
+                this.rounds = 12; // Уменьшено количество раундов для производительности
+                this.saltLength = 32;
+                this.minKeyLength = 8;
+                this.blockSize = 32; // Уменьшен размер блока
             }
 
-            // Инициализация системы
             async init() {
                 await this.generateSBoxes();
                 document.getElementById('status').textContent = "Система инициализирована";
             }
 
-            // Генерация динамических S-блоков
             async generateSBoxes() {
                 this.sbox = new Uint8Array(256);
                 this.invSbox = new Uint8Array(256);
                 
-                // Заполнение на основе SHA-512 от случайного зерна
-                const seed = crypto.getRandomValues(new Uint8Array(64));
-                const hash = await crypto.subtle.digest('SHA-512', seed);
-                const hashBytes = new Uint8Array(hash);
-                
-                // Построение S-блоков
+                // Упрощенная генерация S-блоков
                 for (let i = 0; i < 256; i++) {
-                    this.sbox[i] = hashBytes[i % 64] ^ hashBytes[(i + 37) % 64];
-                    this.sbox[i] = (this.sbox[i] * 16777619) & 0xff;
+                    this.sbox[i] = ((i * 16777619) ^ (i * 2891336453)) & 0xff;
                     this.invSbox[this.sbox[i]] = i;
                 }
             }
 
-            // Основная функция шифрования
             async encrypt(plaintext, key) {
                 try {
                     if (!plaintext || !key) throw new Error("Текст и ключ обязательны");
@@ -153,104 +145,83 @@
                     
                     document.getElementById('status').textContent = "Шифрование...";
                     
-                    // Генерация IV и соли
                     const iv = crypto.getRandomValues(new Uint8Array(this.ivLength));
                     const salt = crypto.getRandomValues(new Uint8Array(this.saltLength));
-                    
-                    // Преобразование текста в байты
                     const textBytes = new TextEncoder().encode(plaintext);
                     
-                    // Генерация ключевого материала
-                    const keyMaterial = await this.deriveKey(key, salt, this.blockSize * 2);
+                    // Упрощенное получение ключевого материала
+                    const keyMaterial = await this.deriveSimpleKey(key, salt);
                     
-                    // Шифрование
                     const ciphertext = await this.processData(iv, textBytes, keyMaterial, true);
-                    
-                    // Генерация MAC
                     const mac = await this.generateHMAC(iv, ciphertext, keyMaterial);
                     
-                    // Формирование итогового сообщения: salt + iv + ciphertext + mac
                     const result = new Uint8Array([...salt, ...iv, ...ciphertext, ...mac]);
                     
                     document.getElementById('status').textContent = "Шифрование завершено";
                     return this.bytesToBase64(result);
                 } catch (e) {
-                    document.getElementById('status').textContent = "Ошибка шифрования: " + e.message;
+                    document.getElementById('status').textContent = `Ошибка шифрования: ${e.message}`;
                     throw e;
                 }
             }
 
-            // Основная функция расшифровки
             async decrypt(encryptedData, key) {
                 try {
                     if (!encryptedData || !key) throw new Error("Данные и ключ обязательны");
                     
                     document.getElementById('status').textContent = "Расшифровка...";
                     
-                    // Декодирование из Base64
                     const data = this.base64ToBytes(encryptedData);
                     
-                    // Проверка минимальной длины
                     if (data.length < this.saltLength + this.ivLength + this.macLength) {
                         throw new Error("Неверный формат данных");
                     }
                     
-                    // Извлечение компонентов
                     const salt = data.slice(0, this.saltLength);
                     const iv = data.slice(this.saltLength, this.saltLength + this.ivLength);
                     const ciphertext = data.slice(this.saltLength + this.ivLength, data.length - this.macLength);
                     const receivedMac = data.slice(data.length - this.macLength);
                     
-                    // Генерация ключевого материала
-                    const keyMaterial = await this.deriveKey(key, salt, this.blockSize * 2);
+                    const keyMaterial = await this.deriveSimpleKey(key, salt);
                     
-                    // Проверка MAC
                     const computedMac = await this.generateHMAC(iv, ciphertext, keyMaterial);
                     if (!this.constantTimeCompare(receivedMac, computedMac)) {
                         throw new Error("Неверный ключ или поврежденные данные");
                     }
                     
-                    // Расшифровка
                     const plaintextBytes = await this.processData(iv, ciphertext, keyMaterial, false);
                     
                     document.getElementById('status').textContent = "Расшифровка завершена";
                     return new TextDecoder().decode(plaintextBytes);
                 } catch (e) {
-                    document.getElementById('status').textContent = "Ошибка расшифровки: " + e.message;
+                    document.getElementById('status').textContent = `Ошибка расшифровки: ${e.message}`;
                     throw e;
                 }
             }
 
-            // Обработка данных (шифрование/расшифровка)
             async processData(iv, data, keyMaterial, encrypt) {
                 const result = new Uint8Array(data.length);
                 let currentIV = new Uint8Array(iv);
                 
-                // Обработка по блокам
                 for (let blockStart = 0; blockStart < data.length; blockStart += this.blockSize) {
                     const blockEnd = Math.min(blockStart + this.blockSize, data.length);
                     const block = data.slice(blockStart, blockEnd);
                     
-                    // Создаем буфер для обработки (IV + данные)
                     const processingBlock = new Uint8Array(currentIV.length + block.length);
                     processingBlock.set(currentIV, 0);
                     processingBlock.set(block, currentIV.length);
                     
-                    // Применение раундов преобразования
                     if (encrypt) {
                         this.encryptionRounds(processingBlock, keyMaterial);
-                        // Для шифрования: следующий IV - последняя часть обработанного блока
                         currentIV = processingBlock.slice(processingBlock.length - currentIV.length);
                     } else {
                         this.decryptionRounds(processingBlock, keyMaterial);
                     }
                     
-                    // Сохранение результата (без IV)
                     const outputBlock = processingBlock.slice(currentIV.length);
                     result.set(outputBlock, blockStart);
                     
                     if (!encrypt && blockStart + this.blockSize < data.length) {
-                        // Для расшифровки следующий IV - текущий зашифрованный блок
                         currentIV = block.slice(block.length - currentIV.length);
                     }
                 }
@@ -258,27 +229,22 @@
                 return result;
             }
 
-            // Раунды шифрования
             encryptionRounds(data, keyMaterial) {
                 for (let round = 0; round < this.rounds; round++) {
                     this.substituteBytes(data, keyMaterial, round);
-                    this.mixColumns(data, keyMaterial, round);
                     this.permuteBytes(data, keyMaterial, round);
                     this.addRoundKey(data, keyMaterial, round);
                 }
             }
 
-            // Раунды расшифровки (обратный порядок)
             decryptionRounds(data, keyMaterial) {
                 for (let round = this.rounds - 1; round >= 0; round--) {
                     this.addRoundKey(data, keyMaterial, round, true);
                     this.permuteBytes(data, keyMaterial, round, true);
-                    this.mixColumns(data, keyMaterial, round, true);
                     this.substituteBytes(data, keyMaterial, round, true);
                 }
             }
 
-            // Функции преобразований
             substituteBytes(data, keyMaterial, round, inverse = false) {
                 const sbox = inverse ? this.invSbox : this.sbox;
                 for (let i = 0; i < data.length; i++) {
@@ -287,147 +253,13 @@
                 }
             }
 
-            mixColumns(data, keyMaterial, round, inverse = false) {
-                const size = Math.max(4, Math.floor(Math.sqrt(data.length)));
-                for (let col = 0; col < size; col++) {
-                    const column = new Uint8Array(size);
-                    for (let row = 0; row < size; row++) {
-                        column[row] = data[(row * size + col) % data.length];
-                    }
-                    
-                    const mixed = this.matrixTransform(column, keyMaterial, round, inverse);
-                    
-                    for (let row = 0; row < size; row++) {
-                        data[(row * size + col) % data.length] = mixed[row];
-                    }
-                }
-            }
-
-            matrixTransform(column, keyMaterial, round, inverse) {
-                const result = new Uint8Array(column.length);
-                const matrix = this.generateMatrix(keyMaterial, round, column.length, inverse);
-                
-                for (let i = 0; i < column.length; i++) {
-                    let val = 0;
-                    for (let j = 0; j < column.length; j++) {
-                        val ^= this.gfMultiply(matrix[i][j], column[j]);
-                    }
-                    result[i] = val;
-                }
-                
-                return result;
-            }
-
-            generateMatrix(keyMaterial, round, size, inverse = false) {
-                const matrix = Array.from({length: size}, () => new Uint8Array(size));
-                for (let i = 0; i < size; i++) {
-                    for (let j = 0; j < size; j++) {
-                        const keyIndex = (i * size + j + round * 11) % keyMaterial.length;
-                        matrix[i][j] = keyMaterial[keyIndex] || 1;
-                    }
-                }
-                
-                if (inverse) {
-                    // Для обратного преобразования нужно вычислить обратную матрицу
-                    return this.invertMatrix(matrix);
-                }
-                
-                return matrix;
-            }
-
-            invertMatrix(matrix) {
-                const size = matrix.length;
-                const inverse = Array.from({length: size}, () => new Uint8Array(size));
-                
-                // Создаем расширенную матрицу [matrix|I]
-                for (let i = 0; i < size; i++) {
-                    for (let j = 0; j < size; j++) {
-                        inverse[i][j] = matrix[i][j];
-                        inverse[i][j + size] = (i === j) ? 1 : 0;
-                    }
-                }
-                
-                // Приведение к ступенчатому виду
-                for (let k = 0; k < size; k++) {
-                    // Нормализация текущей строки
-                    const inv_pivot = this.gfInverse(inverse[k][k]);
-                    for (let j = 0; j < 2 * size; j++) {
-                        inverse[k][j] = this.gfMultiply(inverse[k][j], inv_pivot);
-                    }
-                    
-                    // Исключение
-                    for (let i = 0; i < size; i++) {
-                        if (i !== k && inverse[i][k] !== 0) {
-                            const factor = inverse[i][k];
-                            for (let j = 0; j < 2 * size; j++) {
-                                inverse[i][j] ^= this.gfMultiply(factor, inverse[k][j]);
-                            }
-                        }
-                    }
-                }
-                
-                // Извлечение обратной матрицы
-                const result = Array.from({length: size}, () => new Uint8Array(size));
-                for (let i = 0; i < size; i++) {
-                    for (let j = 0; j < size; j++) {
-                        result[i][j] = inverse[i][j + size];
-                    }
-                }
-                
-                return result;
-            }
-
-            gfMultiply(a, b) {
-                let p = 0;
-                for (let i = 0; i < 8; i++) {
-                    if (b & 1) p ^= a;
-                    const hi = a & 0x80;
-                    a <<= 1;
-                    if (hi) a ^= 0x1b; // Полином AES
-                    b >>= 1;
-                }
-                return p & 0xff;
-            }
-
-            gfInverse(a) {
-                if (a === 0) return 0;
-                let t = 0, newt = 1;
-                let r = 0x11b, newr = a;
-                
-                while (newr !== 0) {
-                    const quotient = this.gfDivide(r, newr);
-                    [t, newt] = [newt, t ^ this.gfMultiply(quotient, newt)];
-                    [r, newr] = [newr, r ^ this.gfMultiply(quotient, newr)];
-                }
-                
-                return t;
-            }
-
-            gfDivide(a, b) {
-                let result = 0;
-                let bitLengthDiff = this.bitLength(a) - this.bitLength(b);
-                
-                while (bitLengthDiff >= 0) {
-                    const shifted = b << bitLengthDiff;
-                    result ^= (1 << bitLengthDiff);
-                    a ^= shifted;
-                    bitLengthDiff = this.bitLength(a) - this.bitLength(b);
-                }
-                
-                return result;
-            }
-
-            bitLength(x) {
-                return x ? 32 - Math.clz32(x) : 0;
-            }
-
             permuteBytes(data, keyMaterial, round, inverse = false) {
                 const temp = new Uint8Array(data.length);
                 for (let i = 0; i < data.length; i++) {
                     const keyByte = keyMaterial[(i + round) % keyMaterial.length];
                     const newPos = inverse ? 
-                        (i - keyByte * 5 + data.length) % data.length :
-                        (i + keyByte * 5) % data.length;
+                        (i - keyByte * 3 + data.length) % data.length :
+                        (i + keyByte * 3) % data.length;
                     temp[newPos] = data[i];
                 }
                 data.set(temp);
@@ -440,46 +272,36 @@
                 }
             }
 
-            // Вспомогательные криптографические функции
-            async deriveKey(password, salt, length) {
-                const iterations = 200000;
+            async deriveSimpleKey(password, salt) {
                 const encoder = new TextEncoder();
-                
-                // Первая стадия: PBKDF2
-                const keyMaterial = await crypto.subtle.importKey(
+                const passwordKey = await crypto.subtle.importKey(
                     'raw', encoder.encode(password),
                     {name: 'PBKDF2'}, false, ['deriveBits']
                 );
                 
-                const derivedBits = await crypto.subtle.deriveBits(
-                    {name: 'PBKDF2', salt, iterations, hash: 'SHA-512'},
-                    keyMaterial,
-                    Math.max(512, length * 8)
+                const keyMaterial = await crypto.subtle.deriveBits(
+                    {
+                        name: 'PBKDF2',
+                        salt: salt,
+                        iterations: 100000,
+                        hash: 'SHA-256'
+                    },
+                    passwordKey,
+                    256
                 );
                 
-                // Вторая стадия: HKDF
-                const hkdfKey = await crypto.subtle.importKey(
-                    'raw', new Uint8Array(derivedBits),
-                    {name: 'HMAC', hash: 'SHA-512'}, false, ['sign']
-                );
-                
-                const hkdf = await crypto.subtle.sign(
-                    'HMAC', hkdfKey,
-                    encoder.encode('QUANTUM_ARMOR_KEY_DERIVATION')
-                );
-                
-                return new Uint8Array(hkdf).slice(0, length);
+                return new Uint8Array(keyMaterial);
             }
 
             async generateHMAC(iv, data, keyMaterial) {
                 const hmacKey = await crypto.subtle.importKey(
-                    'raw', keyMaterial.slice(0, 64),
+                    'raw', keyMaterial,
                     {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']
                 );
                 
                 const macData = new Uint8Array([...iv, ...data]);
                 const mac = await crypto.subtle.sign('HMAC', hmacKey, macData);
-                return new Uint8Array(mac);
+                return new Uint8Array(mac).slice(0, this.macLength);
             }
 
             constantTimeCompare(a, b) {
@@ -491,7 +313,6 @@
                 return result === 0;
             }
 
-            // Утилиты преобразования
             bytesToBase64(bytes) {
                 return btoa(String.fromCharCode(...bytes));
             }
@@ -501,11 +322,9 @@
             }
         }
 
-        // Инициализация системы
         const cryptoSystem = new QuantumArmorPro();
         cryptoSystem.init().catch(console.error);
 
-        // Обработчики интерфейса
         async function encrypt() {
             try {
                 const plaintext = document.getElementById('plaintext').value;
