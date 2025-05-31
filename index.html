@@ -1,127 +1,239 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Phantom Protocol</title>
+    <title>Phantom Secure Messenger</title>
     <style>
-        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px }
-        textarea { width: 100%; height: 100px; margin: 10px 0 }
-        button { padding: 10px 15px; background: #222; color: white; border: none; cursor: pointer }
-        .container { margin: 20px 0; padding: 15px; border: 1px solid #ddd }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #333;
+        }
+        .app-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            resize: none;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .password-field {
+            margin: 15px 0;
+        }
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .action-btn {
+            background: #4a6fa5;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        .action-btn:hover {
+            background: #3a5a8f;
+        }
+        .result-container {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 6px;
+            min-height: 100px;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <h1>🔒 Phantom Protocol</h1>
-    
-    <div class="container">
-        <h3>1. Шифрование сообщения</h3>
-        <textarea id="message" placeholder="Введите текст"></textarea>
-        <input type="password" id="password" placeholder="Пароль">
-        <button onclick="encryptMessage()">Зашифровать</button>
-        <div id="encrypted-result"></div>
-    </div>
-
-    <div class="container">
-        <h3>2. Маскировка под HTTP</h3>
-        <button onclick="maskAsHTTP()">Преобразовать в HTTP-трафик</button>
-        <pre id="http-output"></pre>
-    </div>
-
-    <div class="container">
-        <h3>3. Дешифровка</h3>
-        <button onclick="decryptMessage()">Расшифровать</button>
-        <div id="decrypted-result"></div>
+    <div class="app-container">
+        <h1>Phantom Secure Messenger</h1>
+        
+        <textarea id="messageInput" placeholder="Введите сообщение..."></textarea>
+        
+        <div class="password-field">
+            <input type="password" id="passwordInput" placeholder="Введите пароль">
+        </div>
+        
+        <button class="action-btn" id="actionBtn">Зашифровать и отправить</button>
+        
+        <div class="result-container" id="resultContainer">
+            <p class="status" id="statusText">Готов к работе</p>
+            <pre id="outputContent"></pre>
+        </div>
     </div>
 
     <script>
-        // Хранилище данных
+        // Элементы интерфейса
+        const messageInput = document.getElementById('messageInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const actionBtn = document.getElementById('actionBtn');
+        const statusText = document.getElementById('statusText');
+        const outputContent = document.getElementById('outputContent');
+        
+        // Состояние приложения
         let encryptedData = null;
         let currentKey = null;
-
-        // 1. Шифрование (XChaCha20 + Argon2)
-        async function encryptMessage() {
-            const message = document.getElementById('message').value;
-            const password = document.getElementById('password').value;
-            
-            if (!message || !password) return alert('Введите текст и пароль');
-            
-            // Генерация ключа
-            const salt = crypto.getRandomValues(new Uint8Array(16));
-            const keyMaterial = await crypto.subtle.importKey(
-                'raw', 
-                new TextEncoder().encode(password), 
-                { name: 'PBKDF2' }, 
-                false, 
-                ['deriveKey']
-            );
-            
-            currentKey = await crypto.subtle.deriveKey(
-                {
-                    name: 'PBKDF2',
-                    salt,
-                    iterations: 100000,
-                    hash: 'SHA-256'
-                },
-                keyMaterial,
-                { name: 'AES-GCM', length: 256 },
-                true,
-                ['encrypt', 'decrypt']
-            );
-            
-            // Шифрование
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            encryptedData = await crypto.subtle.encrypt(
-                { name: 'AES-GCM', iv },
-                currentKey,
-                new TextEncoder().encode(message)
-            );
-            
-            document.getElementById('encrypted-result').innerHTML = `
-                <p>Шифротекст (Base64):</p>
-                <pre>${arrayToBase64(new Uint8Array(encryptedData))}</pre>
-                <p>IV (Base64): ${arrayToBase64(iv)}</p>
-            `;
-        }
-
-        // 2. Маскировка под HTTP
-        function maskAsHTTP() {
-            if (!encryptedData) return alert('Сначала зашифруйте сообщение');
-            
-            const base64Data = arrayToBase64(new Uint8Array(encryptedData));
-            const httpRequest = 
-`GET /api/v1?data=${base64Data.slice(0,30)} HTTP/1.1
-Host: example.com
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
-Accept: text/html
-X-Phantom: ${base64Data.slice(30,60)}
-Cookie: session=${base64Data.slice(60,90)}`;
-            
-            document.getElementById('http-output').textContent = httpRequest;
-        }
-
-        // 3. Дешифровка
-        async function decryptMessage() {
-            if (!encryptedData || !currentKey) return alert('Нет данных для дешифровки');
-            
-            try {
-                const decrypted = await crypto.subtle.decrypt(
-                    { name: 'AES-GCM', iv: new Uint8Array(12) },
-                    currentKey,
-                    encryptedData
-                );
-                
-                document.getElementById('decrypted-result').innerHTML = `
-                    <p>Расшифрованный текст:</p>
-                    <pre>${new TextDecoder().decode(decrypted)}</pre>
-                `;
-            } catch (e) {
-                alert('Ошибка дешифровки: неверный пароль или данные');
+        let isEncrypted = false;
+        
+        // Главная функция
+        async function handleAction() {
+            if (!isEncrypted) {
+                await encryptAndDisplay();
+            } else {
+                await decryptAndDisplay();
             }
         }
+        
+        // Шифрование
+        async function encryptAndDisplay() {
+            const message = messageInput.value;
+            const password = passwordInput.value;
+            
+            if (!message || !password) {
+                updateStatus("Введите сообщение и пароль", "error");
+                return;
+            }
+            
+            try {
+                updateStatus("Шифрование...", "processing");
+                
+                // Генерация ключа
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const keyMaterial = await crypto.subtle.importKey(
+                    "raw",
+                    new TextEncoder().encode(password),
+                    { name: "PBKDF2" },
+                    false,
+                    ["deriveKey"]
+                );
+                
+                currentKey = await crypto.subtle.deriveKey(
+                    {
+                        name: "PBKDF2",
+                        salt,
+                        iterations: 100000,
+                        hash: "SHA-256"
+                    },
+                    keyMaterial,
+                    { name: "AES-GCM", length: 256 },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
 
-        // Вспомогательная функция
-        function arrayToBase64(array) {
-            return btoa(String.fromCharCode(...array));
+                // Шифрование
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv },
+                    currentKey,
+                    new TextEncoder().encode(message)
+                );
+
+                encryptedData = {
+                    ciphertext: new Uint8Array(ciphertext),
+                    iv: iv
+                };
+
+                // Форматирование результата
+                const maskedRequest = generateMaskedRequest(encryptedData);
+                
+                // Обновление UI
+                outputContent.textContent = maskedRequest;
+                messageInput.value = "";
+                passwordInput.type = "password";
+                actionBtn.textContent = "Расшифровать";
+                isEncrypted = true;
+                updateStatus("Сообщение зашифровано и готово к отправке", "success");
+                
+            } catch (error) {
+                updateStatus(`Ошибка шифрования: ${error.message}`, "error");
+            }
         }
+        
+        // Дешифровка
+        async function decryptAndDisplay() {
+            const password = passwordInput.value;
+            
+            if (!password) {
+                updateStatus("Введите пароль для дешифровки", "error");
+                return;
+            }
+            
+            try {
+                updateStatus("Дешифровка...", "processing");
+                
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: encryptedData.iv },
+                    currentKey,
+                    encryptedData.ciphertext
+                );
+                
+                // Обновление UI
+                messageInput.value = new TextDecoder().decode(decrypted);
+                outputContent.textContent = "";
+                passwordInput.type = "password";
+                actionBtn.textContent = "Зашифровать и отправить";
+                isEncrypted = false;
+                updateStatus("Сообщение расшифровано", "success");
+                
+            } catch (error) {
+                updateStatus("Ошибка: неверный пароль или поврежденные данные", "error");
+            }
+        }
+        
+        // Генерация маскированного HTTP-запроса
+        function generateMaskedRequest(data) {
+            const base64Data = bytesToBase64(data.ciphertext);
+            const chunks = [
+                base64Data.slice(0, 30),
+                base64Data.slice(30, 60),
+                base64Data.slice(60)
+            ];
+
+            return `GET /api/v1/messages?id=${chunks[0]} HTTP/1.1
+Host: secure.phantom.example
+User-Agent: Mozilla/5.0 (Windows NT 10.0)
+Accept: application/json
+X-Encrypted-Payload: ${chunks[1]}
+Authorization: Bearer ${chunks[2]}`;
+        }
+        
+        // Вспомогательные функции
+        function bytesToBase64(bytes) {
+            return btoa(String.fromCharCode(...bytes));
+        }
+        
+        function updateStatus(text, type) {
+            statusText.textContent = text;
+            statusText.style.color = type === "error" ? "#d32f2f" : 
+                                  type === "success" ? "#388e3c" : "#1976d2";
+        }
+        
+        // Инициализация
+        actionBtn.addEventListener('click', handleAction);
     </script>
 </body>
 </html>
