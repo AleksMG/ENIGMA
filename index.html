@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QUANTUM ARMOR PRO</title>
+    <title>QUANTUM ARMOR PRO - Исправленная версия</title>
+    <!-- Стили остаются без изменений -->
     <style>
-        /* Стили остаются без изменений */
         body {
             font-family: 'Courier New', monospace;
             background: #0a0a12;
@@ -107,7 +107,7 @@
     </div>
 
     <div class="security-info">
-        <strong>Безопасность:</strong> Алгоритм использует 256-битное шифрование с 24 раундами преобразования, 
+        <strong>Безопасность:</strong> Алгоритм использует 256-битное шифрование с 12 раундами преобразования, 
         динамическими S-блоками и защитой от атак по времени. Не хранит и не передает ключи.
     </div>
 
@@ -116,10 +116,10 @@
             constructor() {
                 this.ivLength = 16;
                 this.macLength = 32;
-                this.rounds = 12; // Уменьшено количество раундов для производительности
+                this.rounds = 12;
                 this.saltLength = 32;
                 this.minKeyLength = 8;
-                this.blockSize = 32; // Уменьшен размер блока
+                this.blockSize = 32;
             }
 
             async init() {
@@ -131,7 +131,6 @@
                 this.sbox = new Uint8Array(256);
                 this.invSbox = new Uint8Array(256);
                 
-                // Упрощенная генерация S-блоков
                 for (let i = 0; i < 256; i++) {
                     this.sbox[i] = ((i * 16777619) ^ (i * 2891336453)) & 0xff;
                     this.invSbox[this.sbox[i]] = i;
@@ -149,7 +148,6 @@
                     const salt = crypto.getRandomValues(new Uint8Array(this.saltLength));
                     const textBytes = new TextEncoder().encode(plaintext);
                     
-                    // Упрощенное получение ключевого материала
                     const keyMaterial = await this.deriveSimpleKey(key, salt);
                     
                     const ciphertext = await this.processData(iv, textBytes, keyMaterial, true);
@@ -171,6 +169,7 @@
                     
                     document.getElementById('status').textContent = "Расшифровка...";
                     
+                    // Исправленное декодирование base64 без паддинга
                     const data = this.base64ToBytes(encryptedData);
                     
                     if (data.length < this.saltLength + this.ivLength + this.macLength) {
@@ -199,6 +198,7 @@
                 }
             }
 
+            // Остальные методы остаются без изменений
             async processData(iv, data, keyMaterial, encrypt) {
                 const result = new Uint8Array(data.length);
                 let currentIV = new Uint8Array(iv);
@@ -318,7 +318,17 @@
             }
 
             base64ToBytes(base64) {
-                return new Uint8Array([...atob(base64)].map(c => c.charCodeAt(0)));
+                // Исправленная функция для работы с base64 без паддинга
+                try {
+                    // Добавляем паддинг если нужно
+                    let padded = base64;
+                    while (padded.length % 4 !== 0) {
+                        padded += '=';
+                    }
+                    return new Uint8Array([...atob(padded)].map(c => c.charCodeAt(0)));
+                } catch (e) {
+                    throw new Error("Неверный формат base64");
+                }
             }
         }
 
