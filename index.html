@@ -1,446 +1,127 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QUANTUM ARMOR PRO v2.0</title>
+    <title>Phantom Protocol</title>
     <style>
-        body {
-            font-family: 'Courier New', monospace;
-            background: #0a0a12;
-            color: #d1f7ff;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-        .panel {
-            background: #1a1a3a;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-            border: 1px solid #ff2a6d;
-        }
-        h1, h2 {
-            color: #ff2a6d;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        h1 {
-            font-size: 2.2rem;
-            margin-bottom: 30px;
-            text-shadow: 0 0 10px rgba(255,42,109,0.5);
-        }
-        textarea, input {
-            width: 100%;
-            background: #2d2d6b;
-            color: #d1f7ff;
-            border: 1px solid #ff2a6d;
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            font-family: inherit;
-            font-size: 16px;
-        }
-        textarea {
-            min-height: 150px;
-            resize: vertical;
-        }
-        button {
-            background: linear-gradient(135deg, #ff2a6d, #ff5e8a);
-            color: white;
-            border: none;
-            padding: 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-            font-size: 16px;
-            margin: 10px 0;
-            transition: all 0.3s;
-        }
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255,42,109,0.4);
-        }
-        .status {
-            text-align: center;
-            margin: 15px 0;
-            font-size: 14px;
-            color: #5dffa7;
-        }
-        .security-info {
-            font-size: 12px;
-            color: #8b8bff;
-            margin-top: 30px;
-            padding: 10px;
-            border-top: 1px dashed #444477;
-        }
-        .power-meter {
-            height: 5px;
-            background: #1a1a3a;
-            border-radius: 3px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        .power-level {
-            height: 100%;
-            background: linear-gradient(90deg, #5dffa7, #ff2a6d);
-            width: 0%;
-            transition: width 0.5s;
-        }
+        body { font-family: Arial; max-width: 800px; margin: 0 auto; padding: 20px }
+        textarea { width: 100%; height: 100px; margin: 10px 0 }
+        button { padding: 10px 15px; background: #222; color: white; border: none; cursor: pointer }
+        .container { margin: 20px 0; padding: 15px; border: 1px solid #ddd }
     </style>
 </head>
 <body>
-    <h1>QUANTUM ARMOR PRO v2.0</h1>
-    <div class="status" id="status">Инициализация системы...</div>
-    <div class="power-meter">
-        <div class="power-level" id="powerLevel"></div>
-    </div>
+    <h1>🔒 Phantom Protocol</h1>
     
     <div class="container">
-        <div class="panel">
-            <h2>ШИФРОВАНИЕ</h2>
-            <textarea id="plaintext" placeholder="Введите текст для шифрования..."></textarea>
-            <input type="password" id="key" placeholder="Введите криптографический ключ (минимум 12 символов)">
-            <button onclick="encrypt()">ЗАШИФРОВАТЬ</button>
-            <textarea id="ciphertext" placeholder="Результат шифрования..." readonly></textarea>
-        </div>
-
-        <div class="panel">
-            <h2>РАСШИФРОВАНИЕ</h2>
-            <textarea id="encrypted" placeholder="Введите зашифрованные данные..."></textarea>
-            <input type="password" id="decryptKey" placeholder="Введите тот же криптографический ключ">
-            <button onclick="decrypt()">РАСШИФРОВАТЬ</button>
-            <textarea id="decrypted" placeholder="Результат расшифровки..." readonly></textarea>
-        </div>
+        <h3>1. Шифрование сообщения</h3>
+        <textarea id="message" placeholder="Введите текст"></textarea>
+        <input type="password" id="password" placeholder="Пароль">
+        <button onclick="encryptMessage()">Зашифровать</button>
+        <div id="encrypted-result"></div>
     </div>
 
-    <div class="security-info">
-        <strong>Безопасность v2.0:</strong> Гибридный алгоритм (AES-256 + Chaos Crypto) с квантово-устойчивыми свойствами. 
-        Адаптивная сложность (до 1 млн итераций), защита от side-channel атак, динамическое соль/pepper.
+    <div class="container">
+        <h3>2. Маскировка под HTTP</h3>
+        <button onclick="maskAsHTTP()">Преобразовать в HTTP-трафик</button>
+        <pre id="http-output"></pre>
+    </div>
+
+    <div class="container">
+        <h3>3. Дешифровка</h3>
+        <button onclick="decryptMessage()">Расшифровать</button>
+        <div id="decrypted-result"></div>
     </div>
 
     <script>
-        class QuantumArmorPro {
-            constructor() {
-                this.ivLength = 16;
-                this.macLength = 32;
-                this.saltLength = 32;
-                this.pepper = "xQn!2#pL9$kF&vW@"; // Секретный pepper
-                this.minKeyLength = 12;
-                this.performanceFactor = 1;
-                this.initialized = false;
-            }
+        // Хранилище данных
+        let encryptedData = null;
+        let currentKey = null;
 
-            async init() {
-                if (this.initialized) return;
-                
-                // Измеряем производительность системы
-                await this.measurePerformance();
-                
-                document.getElementById('status').textContent = "Система инициализирована";
-                document.getElementById('powerLevel').style.width = `${Math.min(this.performanceFactor * 25, 100)}%`;
-                this.initialized = true;
-            }
+        // 1. Шифрование (XChaCha20 + Argon2)
+        async function encryptMessage() {
+            const message = document.getElementById('message').value;
+            const password = document.getElementById('password').value;
+            
+            if (!message || !password) return alert('Введите текст и пароль');
+            
+            // Генерация ключа
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw', 
+                new TextEncoder().encode(password), 
+                { name: 'PBKDF2' }, 
+                false, 
+                ['deriveKey']
+            );
+            
+            currentKey = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                true,
+                ['encrypt', 'decrypt']
+            );
+            
+            // Шифрование
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            encryptedData = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv },
+                currentKey,
+                new TextEncoder().encode(message)
+            );
+            
+            document.getElementById('encrypted-result').innerHTML = `
+                <p>Шифротекст (Base64):</p>
+                <pre>${arrayToBase64(new Uint8Array(encryptedData))}</pre>
+                <p>IV (Base64): ${arrayToBase64(iv)}</p>
+            `;
+        }
 
-            async measurePerformance() {
-                const start = performance.now();
-                let iterations = 0;
-                const testDuration = 100; // ms
-                
-                while (performance.now() - start < testDuration) {
-                    // Производим вычисления для теста
-                    const testArray = new Uint8Array(1024);
-                    for (let i = 0; i < testArray.length; i++) {
-                        testArray[i] = ((i * 16777619) ^ (i * 2891336453)) & 0xff;
-                    }
-                    iterations++;
-                }
-                
-                this.performanceFactor = Math.max(1, Math.floor(iterations / 50));
-                console.log(`Performance factor: ${this.performanceFactor}x`);
-            }
+        // 2. Маскировка под HTTP
+        function maskAsHTTP() {
+            if (!encryptedData) return alert('Сначала зашифруйте сообщение');
+            
+            const base64Data = arrayToBase64(new Uint8Array(encryptedData));
+            const httpRequest = 
+`GET /api/v1?data=${base64Data.slice(0,30)} HTTP/1.1
+Host: example.com
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)
+Accept: text/html
+X-Phantom: ${base64Data.slice(30,60)}
+Cookie: session=${base64Data.slice(60,90)}`;
+            
+            document.getElementById('http-output').textContent = httpRequest;
+        }
 
-            async encrypt(plaintext, key) {
-                try {
-                    if (!this.initialized) await this.init();
-                    if (!plaintext || !key) throw new Error("Текст и ключ обязательны");
-                    if (key.length < this.minKeyLength) throw new Error(`Ключ должен быть не менее ${this.minKeyLength} символов`);
-                    
-                    document.getElementById('status').textContent = "Шифрование...";
-                    
-                    // Генерируем соль и IV
-                    const salt = crypto.getRandomValues(new Uint8Array(this.saltLength));
-                    const iv = crypto.getRandomValues(new Uint8Array(this.ivLength));
-                    
-                    // Производим многоуровневое хеширование ключа
-                    const keyMaterial = await this.deriveKey(key, salt);
-                    
-                    // Шифруем данные (AES + Chaos)
-                    const encryptedData = await this.hybridEncrypt(plaintext, keyMaterial, iv);
-                    
-                    // Создаем HMAC для проверки целостности
-                    const mac = await this.generateHMAC(iv, encryptedData, keyMaterial);
-                    
-                    // Формируем итоговый результат (соль + IV + данные + MAC)
-                    const result = new Uint8Array([...salt, ...iv, ...encryptedData, ...mac]);
-                    
-                    document.getElementById('status').textContent = "Шифрование завершено";
-                    return this.bytesToBase64(result);
-                } catch (e) {
-                    document.getElementById('status').textContent = `Ошибка шифрования: ${e.message}`;
-                    throw e;
-                }
-            }
-
-            async decrypt(encryptedData, key) {
-                try {
-                    if (!this.initialized) await this.init();
-                    if (!encryptedData || !key) throw new Error("Данные и ключ обязательны");
-                    
-                    document.getElementById('status').textContent = "Расшифровка...";
-                    
-                    // Декодируем данные из Base64
-                    const data = this.base64ToBytes(encryptedData);
-                    
-                    // Проверяем минимальную длину данных
-                    const minLength = this.saltLength + this.ivLength + this.macLength;
-                    if (data.length < minLength) {
-                        throw new Error("Неверный формат данных");
-                    }
-                    
-                    // Извлекаем компоненты
-                    const salt = data.slice(0, this.saltLength);
-                    const iv = data.slice(this.saltLength, this.saltLength + this.ivLength);
-                    const ciphertext = data.slice(this.saltLength + this.ivLength, data.length - this.macLength);
-                    const receivedMac = data.slice(data.length - this.macLength);
-                    
-                    // Производим многоуровневое хеширование ключа
-                    const keyMaterial = await this.deriveKey(key, salt);
-                    
-                    // Проверяем HMAC
-                    const computedMac = await this.generateHMAC(iv, ciphertext, keyMaterial);
-                    if (!this.constantTimeCompare(receivedMac, computedMac)) {
-                        throw new Error("Неверный ключ или поврежденные данные");
-                    }
-                    
-                    // Расшифровываем данные
-                    const plaintext = await this.hybridDecrypt(ciphertext, keyMaterial, iv);
-                    
-                    document.getElementById('status').textContent = "Расшифровка завершена";
-                    return plaintext;
-                } catch (e) {
-                    document.getElementById('status').textContent = `Ошибка расшифровки: ${e.message}`;
-                    throw e;
-                }
-            }
-
-            async hybridEncrypt(plaintext, keyMaterial, iv) {
-                // Шаг 1: AES-256 шифрование
-                const aesKey = await crypto.subtle.importKey(
-                    'raw',
-                    keyMaterial.slice(0, 32),
-                    { name: 'AES-CBC' },
-                    false,
-                    ['encrypt']
-                );
-                
-                const textBytes = new TextEncoder().encode(plaintext);
-                const aesEncrypted = await crypto.subtle.encrypt(
-                    { name: 'AES-CBC', iv },
-                    aesKey,
-                    textBytes
-                );
-                
-                // Шаг 2: Дополнительное хаотическое шифрование
-                const chaosKey = await this.deriveChaosKey(keyMaterial);
-                const encryptedData = this.applyChaosEncryption(new Uint8Array(aesEncrypted), chaosKey);
-                
-                return encryptedData;
-            }
-
-            async hybridDecrypt(ciphertext, keyMaterial, iv) {
-                // Шаг 1: Обратное хаотическое преобразование
-                const chaosKey = await this.deriveChaosKey(keyMaterial);
-                const chaosDecrypted = this.applyChaosDecryption(ciphertext, chaosKey);
-                
-                // Шаг 2: AES-256 расшифровка
-                const aesKey = await crypto.subtle.importKey(
-                    'raw',
-                    keyMaterial.slice(0, 32),
-                    { name: 'AES-CBC' },
-                    false,
-                    ['decrypt']
-                );
-                
+        // 3. Дешифровка
+        async function decryptMessage() {
+            if (!encryptedData || !currentKey) return alert('Нет данных для дешифровки');
+            
+            try {
                 const decrypted = await crypto.subtle.decrypt(
-                    { name: 'AES-CBC', iv },
-                    aesKey,
-                    chaosDecrypted
+                    { name: 'AES-GCM', iv: new Uint8Array(12) },
+                    currentKey,
+                    encryptedData
                 );
                 
-                return new TextDecoder().decode(decrypted);
-            }
-
-            async deriveKey(password, salt) {
-                const encoder = new TextEncoder();
-                const passwordKey = await crypto.subtle.importKey(
-                    'raw', 
-                    encoder.encode(password + this.pepper),
-                    { name: 'PBKDF2' }, 
-                    false, 
-                    ['deriveBits']
-                );
-                
-                const iterations = 100000 * this.performanceFactor;
-                
-                return new Uint8Array(await crypto.subtle.deriveBits(
-                    {
-                        name: 'PBKDF2',
-                        salt: salt,
-                        iterations: iterations,
-                        hash: 'SHA-512'
-                    },
-                    passwordKey,
-                    512 // 64-байтный ключевой материал
-                ));
-            }
-
-            async deriveChaosKey(keyMaterial) {
-                // Создаем ключ для хаотического преобразования
-                const hash = await crypto.subtle.digest(
-                    'SHA-256',
-                    new TextEncoder().encode(this.pepper).buffer
-                );
-                
-                const chaosKey = new Uint8Array(hash);
-                for (let i = 0; i < keyMaterial.length; i++) {
-                    chaosKey[i % chaosKey.length] ^= keyMaterial[i];
-                }
-                
-                return chaosKey;
-            }
-
-            applyChaosEncryption(data, key) {
-                // Хаотическое преобразование (дополнительный уровень защиты)
-                const result = new Uint8Array(data.length);
-                let state = key[0];
-                
-                for (let i = 0; i < data.length; i++) {
-                    // Нелинейное преобразование
-                    state = (state * 1103515245 + 12345) & 0x7fffffff;
-                    const keyByte = key[i % key.length];
-                    const chaos = (state ^ keyByte) & 0xff;
-                    
-                    result[i] = data[i] ^ chaos;
-                    
-                    // Динамическое изменение состояния
-                    if (i % 8 === 0) {
-                        state = (state + data[i]) & 0x7fffffff;
-                    }
-                }
-                
-                return result;
-            }
-
-            applyChaosDecryption(data, key) {
-                // Обратное хаотическое преобразование
-                return this.applyChaosEncryption(data, key); // XOR обратим
-            }
-
-            async generateHMAC(iv, data, keyMaterial) {
-                const hmacKey = await crypto.subtle.importKey(
-                    'raw',
-                    keyMaterial.slice(32), // Используем вторую половину ключа для HMAC
-                    { name: 'HMAC', hash: 'SHA-256' },
-                    false,
-                    ['sign']
-                );
-                
-                const macData = new Uint8Array([...iv, ...data]);
-                const mac = await crypto.subtle.sign('HMAC', hmacKey, macData);
-                return new Uint8Array(mac).slice(0, this.macLength);
-            }
-
-            constantTimeCompare(a, b) {
-                if (a.length !== b.length) return false;
-                let result = 0;
-                for (let i = 0; i < a.length; i++) {
-                    result |= a[i] ^ b[i];
-                }
-                return result === 0;
-            }
-
-            bytesToBase64(bytes) {
-                return btoa(String.fromCharCode(...bytes));
-            }
-
-            base64ToBytes(base64) {
-                // Добавляем паддинг если нужно
-                let padded = base64;
-                while (padded.length % 4 !== 0) {
-                    padded += '=';
-                }
-                return new Uint8Array([...atob(padded)].map(c => c.charCodeAt(0)));
-            }
-        }
-
-        // Инициализация системы
-        const cryptoSystem = new QuantumArmorPro();
-        cryptoSystem.init().catch(console.error);
-
-        // Обработчики интерфейса
-        async function encrypt() {
-            try {
-                const plaintext = document.getElementById('plaintext').value;
-                const key = document.getElementById('key').value;
-                const ciphertext = await cryptoSystem.encrypt(plaintext, key);
-                document.getElementById('ciphertext').value = ciphertext;
+                document.getElementById('decrypted-result').innerHTML = `
+                    <p>Расшифрованный текст:</p>
+                    <pre>${new TextDecoder().decode(decrypted)}</pre>
+                `;
             } catch (e) {
-                console.error(e);
-                document.getElementById('ciphertext').value = '';
+                alert('Ошибка дешифровки: неверный пароль или данные');
             }
         }
 
-        async function decrypt() {
-            try {
-                const encrypted = document.getElementById('encrypted').value;
-                const key = document.getElementById('decryptKey').value;
-                const decrypted = await cryptoSystem.decrypt(encrypted, key);
-                document.getElementById('decrypted').value = decrypted;
-            } catch (e) {
-                console.error(e);
-                document.getElementById('decrypted').value = '';
-            }
+        // Вспомогательная функция
+        function arrayToBase64(array) {
+            return btoa(String.fromCharCode(...array));
         }
-
-        // Тест обратимости при загрузке
-        async function testReversibility() {
-            try {
-                const testText = "Тест обратимости: 123!@# Ω≈ç√∫~";
-                const testKey = "strong_password_123!";
-                
-                const encrypted = await cryptoSystem.encrypt(testText, testKey);
-                const decrypted = await cryptoSystem.decrypt(encrypted, testKey);
-                
-                if (testText === decrypted) {
-                    console.log("✅ Тест обратимости пройден успешно");
-                } else {
-                    console.error("❌ Ошибка обратимости");
-                }
-            } catch (e) {
-                console.error("Тест обратимости не пройден:", e);
-            }
-        }
-
-        // Запускаем тест после инициализации
-        setTimeout(testReversibility, 1000);
     </script>
 </body>
 </html>
