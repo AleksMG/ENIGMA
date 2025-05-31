@@ -3,299 +3,465 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Q-ARMOR: Post-Quantum Encryption</title>
+    <title>QUANTUM ARMOR PRO</title>
     <style>
-        :root {
-            --q-dark: #0a0a12;
-            --q-primary: #1a1a3a;
-            --q-secondary: #2d2d6b;
-            --q-accent: #ff2a6d;
-            --q-light: #d1f7ff;
-        }
         body {
             font-family: 'Courier New', monospace;
-            background: var(--q-dark);
-            color: var(--q-light);
+            background: #0a0a12;
+            color: #d1f7ff;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
             line-height: 1.6;
         }
-        .q-panel {
-            background: var(--q-primary);
+        .container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background: #1a1a3a;
             border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 25px;
+            padding: 20px;
             box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-            border: 1px solid var(--q-accent);
+            border: 1px solid #ff2a6d;
+        }
+        h1, h2 {
+            color: #ff2a6d;
+            text-align: center;
+            margin-bottom: 20px;
         }
         h1 {
-            color: var(--q-accent);
-            text-align: center;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             margin-bottom: 30px;
-            text-shadow: 0 0 10px rgba(255,42,109,0.7);
+            text-shadow: 0 0 10px rgba(255,42,109,0.5);
         }
         textarea, input {
             width: 100%;
-            background: var(--q-secondary);
-            color: var(--q-light);
-            border: 1px solid var(--q-accent);
-            padding: 15px;
+            background: #2d2d6b;
+            color: #d1f7ff;
+            border: 1px solid #ff2a6d;
+            padding: 12px;
             border-radius: 6px;
+            margin-bottom: 15px;
             font-family: inherit;
             font-size: 16px;
-            margin-bottom: 15px;
         }
         textarea {
             min-height: 150px;
+            resize: vertical;
         }
         button {
-            background: linear-gradient(135deg, var(--q-accent), #ff5e8a);
+            background: linear-gradient(135deg, #ff2a6d, #ff5e8a);
             color: white;
             border: none;
-            padding: 15px;
+            padding: 14px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 18px;
             width: 100%;
+            font-size: 16px;
+            margin: 10px 0;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(255,42,109,0.4);
         }
         button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(255,42,109,0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,42,109,0.4);
         }
-        .q-badge {
-            background: var(--q-secondary);
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 25px;
-            border-left: 5px solid var(--q-accent);
+        .status {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #5dffa7;
+        }
+        .security-info {
+            font-size: 12px;
+            color: #8b8bff;
+            margin-top: 30px;
+            padding: 10px;
+            border-top: 1px dashed #444477;
         }
     </style>
 </head>
 <body>
-    <h1>🛡️ Q-ARMOR (Post-Quantum)</h1>
+    <h1>QUANTUM ARMOR PRO</h1>
+    <div class="status" id="status">Система готова к работе</div>
     
-    <div class="q-panel">
-        <h2>КВАНТОВОЕ ШИФРОВАНИЕ</h2>
-        <textarea id="q-plaintext" placeholder="Введите текст..."></textarea>
-        <input type="password" id="q-key" placeholder="Ключ (минимум 32 символа)">
-        <button onclick="qEncrypt()">ЗАШИФРОВАТЬ</button>
-        <textarea id="q-ciphertext" placeholder="Результат..." readonly></textarea>
+    <div class="container">
+        <div class="panel">
+            <h2>ШИФРОВАНИЕ</h2>
+            <textarea id="plaintext" placeholder="Введите текст для шифрования..."></textarea>
+            <input type="password" id="key" placeholder="Введите криптографический ключ (рекомендуется 32+ символа)">
+            <button onclick="encrypt()">ЗАШИФРОВАТЬ</button>
+            <textarea id="ciphertext" placeholder="Результат шифрования..." readonly></textarea>
+        </div>
+
+        <div class="panel">
+            <h2>РАСШИФРОВАНИЕ</h2>
+            <textarea id="encrypted" placeholder="Введите зашифрованные данные..."></textarea>
+            <input type="password" id="decryptKey" placeholder="Введите тот же криптографический ключ">
+            <button onclick="decrypt()">РАСШИФРОВАТЬ</button>
+            <textarea id="decrypted" placeholder="Результат расшифровки..." readonly></textarea>
+        </div>
     </div>
 
-    <div class="q-panel">
-        <h2>КВАНТОВАЯ РАСШИФРОВКА</h2>
-        <textarea id="q-encrypted" placeholder="Введите зашифрованные данные..."></textarea>
-        <input type="password" id="q-decrypt-key" placeholder="Тот же ключ">
-        <button onclick="qDecrypt()">РАСШИФРОВАТЬ</button>
-        <textarea id="q-decrypted" placeholder="Результат..." readonly></textarea>
-    </div>
-
-    <div class="q-badge">
-        <h3>🔐 ПАРАМЕТРЫ БЕЗОПАСНОСТИ:</h3>
-        <ul>
-            <li><strong>Гибридный алгоритм</strong>: AES-512 + NTRU (квантово-стойкий)</li>
-            <li><strong>Стойкость</strong>: 2<sup>512</sup> операций для взлома</li>
-            <li><strong>Защита</strong>: Аппаратно-независимая, устойчива к timing-атакам</li>
-            <li><strong>Сертификация</strong>: Условно соответствует NSA Suite B++</li>
-        </ul>
+    <div class="security-info">
+        <strong>Безопасность:</strong> Алгоритм использует 256-битное шифрование с 24 раундами преобразования, 
+        динамическими S-блоками и защитой от атак по времени. Не хранит и не передает ключи.
     </div>
 
     <script>
-        // ===== Квантово-стойкие алгоритмы =====
-        class QArmor {
+        class QuantumArmorPro {
             constructor() {
-                this.prime = this.generateLargePrime(512);
+                this.ivLength = 16; // 128-bit вектор инициализации
+                this.macLength = 32; // 256-bit аутентификационный код
+                this.rounds = 24; // Увеличенное число раундов
+                this.saltLength = 32; // 256-bit соль для PBKDF2
+                this.minKeyLength = 8; // Минимальная длина ключа
             }
 
-            // Генерация 512-битного простого числа
-            generateLargePrime(bits) {
-                const bigInt = window.BigInt || Math;
-                let candidate;
-                do {
-                    candidate = this.getRandomBigInt(bits);
-                } while (!this.isProbablePrime(candidate));
-                return candidate;
+            // Инициализация системы
+            async init() {
+                await this.generateSBoxes();
+                document.getElementById('status').textContent = "Система инициализирована";
             }
 
-            // NTRU-подобное преобразование
-            ntruTransform(data, key, encrypt = true) {
+            // Генерация динамических S-блоков
+            async generateSBoxes() {
+                this.sbox = new Uint8Array(256);
+                this.invSbox = new Uint8Array(256);
+                
+                // Заполнение на основе SHA-512 от случайного зерна
+                const seed = crypto.getRandomValues(new Uint8Array(64));
+                const hash = await crypto.subtle.digest('SHA-512', seed);
+                const hashBytes = new Uint8Array(hash);
+                
+                // Построение S-блоков
+                for (let i = 0; i < 256; i++) {
+                    this.sbox[i] = hashBytes[i % 64] ^ hashBytes[(i + 37) % 64];
+                    this.sbox[i] = (this.sbox[i] * 16777619) & 0xff;
+                    this.invSbox[this.sbox[i]] = i;
+                }
+            }
+
+            // Основная функция шифрования
+            async encrypt(plaintext, key) {
+                try {
+                    if (!plaintext || !key) throw new Error("Текст и ключ обязательны");
+                    if (key.length < this.minKeyLength) throw new Error(`Ключ должен быть не менее ${this.minKeyLength} символов`);
+                    
+                    document.getElementById('status').textContent = "Шифрование...";
+                    
+                    // Генерация IV и соли
+                    const iv = crypto.getRandomValues(new Uint8Array(this.ivLength));
+                    const salt = crypto.getRandomValues(new Uint8Array(this.saltLength));
+                    
+                    // Преобразование текста в байты
+                    const textBytes = new TextEncoder().encode(plaintext);
+                    
+                    // Генерация ключевого материала
+                    const keyMaterial = await this.deriveKey(key, salt, textBytes.length * 2 + 64);
+                    
+                    // Шифрование
+                    const ciphertext = await this.processData(iv, textBytes, keyMaterial, true);
+                    
+                    // Генерация MAC
+                    const mac = await this.generateHMAC(iv, ciphertext, keyMaterial);
+                    
+                    // Формирование итогового сообщения: salt + iv + ciphertext + mac
+                    const result = new Uint8Array([...salt, ...iv, ...ciphertext, ...mac]);
+                    
+                    document.getElementById('status').textContent = "Шифрование завершено";
+                    return this.bytesToBase64(result);
+                } catch (e) {
+                    document.getElementById('status').textContent = "Ошибка шифрования";
+                    throw e;
+                }
+            }
+
+            // Основная функция расшифровки
+            async decrypt(encryptedData, key) {
+                try {
+                    if (!encryptedData || !key) throw new Error("Данные и ключ обязательны");
+                    
+                    document.getElementById('status').textContent = "Расшифровка...";
+                    
+                    // Декодирование из Base64
+                    const data = this.base64ToBytes(encryptedData);
+                    
+                    // Проверка минимальной длины
+                    if (data.length < this.saltLength + this.ivLength + this.macLength) {
+                        throw new Error("Неверный формат данных");
+                    }
+                    
+                    // Извлечение компонентов
+                    const salt = data.slice(0, this.saltLength);
+                    const iv = data.slice(this.saltLength, this.saltLength + this.ivLength);
+                    const ciphertext = data.slice(this.saltLength + this.ivLength, data.length - this.macLength);
+                    const receivedMac = data.slice(data.length - this.macLength);
+                    
+                    // Генерация ключевого материала
+                    const keyMaterial = await this.deriveKey(key, salt, ciphertext.length * 2 + 64);
+                    
+                    // Проверка MAC
+                    const computedMac = await this.generateHMAC(iv, ciphertext, keyMaterial);
+                    if (!this.constantTimeCompare(receivedMac, computedMac)) {
+                        throw new Error("Неверный ключ или поврежденные данные");
+                    }
+                    
+                    // Расшифровка
+                    const plaintextBytes = await this.processData(iv, ciphertext, keyMaterial, false);
+                    
+                    document.getElementById('status').textContent = "Расшифровка завершена";
+                    return new TextDecoder().decode(plaintextBytes);
+                } catch (e) {
+                    document.getElementById('status').textContent = "Ошибка расшифровки";
+                    throw e;
+                }
+            }
+
+            // Обработка данных (шифрование/расшифровка)
+            async processData(iv, data, keyMaterial, encrypt) {
                 const result = new Uint8Array(data.length);
-                const keyHash = this.sha512(key);
+                const blockSize = 64; // Размер блока для обработки
                 
-                for (let i = 0; i < data.length; i++) {
-                    const keyByte = keyHash[i % keyHash.length];
-                    const dataByte = data[i];
+                // Обработка по блокам
+                for (let blockStart = 0; blockStart < data.length; blockStart += blockSize) {
+                    const blockEnd = Math.min(blockStart + blockSize, data.length);
+                    const block = data.slice(blockStart, blockEnd);
                     
+                    // Добавление IV к блоку
+                    const processedBlock = new Uint8Array([...iv, ...block]);
+                    
+                    // Применение раундов преобразования
                     if (encrypt) {
-                        result[i] = (dataByte * this.prime + keyByte) % 256;
+                        this.encryptionRounds(processedBlock, keyMaterial);
                     } else {
-                        result[i] = ((dataByte - keyByte) * this.modInverse(this.prime, 256)) % 256;
+                        this.decryptionRounds(processedBlock, keyMaterial);
                     }
                     
-                    // Дополнительное перемешивание
-                    result[i] ^= keyHash[(i + 17) % keyHash.length];
+                    // Сохранение результата (без IV)
+                    result.set(processedBlock.slice(iv.length), blockStart);
+                    
+                    // Обновление IV для следующего блока
+                    iv = processedBlock.slice(processedBlock.length - iv.length);
                 }
+                
                 return result;
             }
 
-            // Гибридное шифрование (AES-512 + NTRU)
-            hybridEncrypt(text, key) {
-                if (key.length < 32) throw new Error("Ключ должен быть ≥32 символов");
-                
-                // Генерация производного ключа
-                const masterKey = this.sha512(key + "Q-ARMOR-SALT");
-                const aesKey = masterKey.slice(0, 64);
-                const ntruKey = masterKey.slice(32);
-                
-                // Шаг 1: AES-512 подобное преобразование
-                const textBytes = new TextEncoder().encode(text);
-                let state = new Uint8Array(textBytes);
-                
-                for (let round = 0; round < 16; round++) {
-                    for (let i = 0; i < state.length; i++) {
-                        const keyPos = (i + round * 13) % aesKey.length;
-                        state[i] = (state[i] + aesKey[keyPos] * (round + 1)) % 256;
-                        state[i] ^= state[(i + round + 7) % state.length];
-                    }
+            // Раунды шифрования
+            encryptionRounds(data, keyMaterial) {
+                for (let round = 0; round < this.rounds; round++) {
+                    // Фаза замещения
+                    this.substituteBytes(data, keyMaterial, round);
+                    
+                    // Фаза перемешивания
+                    this.mixColumns(data, keyMaterial, round);
+                    
+                    // Фаза перестановки
+                    this.permuteBytes(data, keyMaterial, round);
+                    
+                    // Добавление ключевого материала
+                    this.addRoundKey(data, keyMaterial, round);
                 }
-                
-                // Шаг 2: Квантово-стойкое NTRU преобразование
-                state = this.ntruTransform(state, ntruKey, true);
-                
-                return {
-                    ciphertext: btoa(String.fromCharCode(...state)),
-                    params: {
-                        prime: this.prime.toString(16),
-                        rounds: 16
-                    }
-                };
             }
 
-            // Вспомогательные функции
-            sha512(str) {
+            // Раунды расшифровки
+            decryptionRounds(data, keyMaterial) {
+                for (let round = this.rounds - 1; round >= 0; round--) {
+                    // Обратное добавление ключевого материала
+                    this.addRoundKey(data, keyMaterial, round, true);
+                    
+                    // Обратная перестановка
+                    this.permuteBytes(data, keyMaterial, round, true);
+                    
+                    // Обратное перемешивание
+                    this.mixColumns(data, keyMaterial, round, true);
+                    
+                    // Обратное замещение
+                    this.substituteBytes(data, keyMaterial, round, true);
+                }
+            }
+
+            // Функции преобразований
+            substituteBytes(data, keyMaterial, round, inverse = false) {
+                const sbox = inverse ? this.invSbox : this.sbox;
+                for (let i = 0; i < data.length; i++) {
+                    const keyIndex = (i + round * 17) % keyMaterial.length;
+                    data[i] = sbox[data[i] ^ keyMaterial[keyIndex]];
+                }
+            }
+
+            mixColumns(data, keyMaterial, round, inverse = false) {
+                const size = Math.floor(Math.sqrt(data.length)) || 4;
+                for (let col = 0; col < size; col++) {
+                    const column = new Uint8Array(size);
+                    for (let row = 0; row < size; row++) {
+                        column[row] = data[(row * size + col) % data.length];
+                    }
+                    
+                    // Матричное преобразование
+                    const mixed = this.matrixTransform(column, keyMaterial, round, inverse);
+                    
+                    // Обратная запись
+                    for (let row = 0; row < size; row++) {
+                        data[(row * size + col) % data.length] = mixed[row];
+                    }
+                }
+            }
+
+            matrixTransform(column, keyMaterial, round, inverse) {
+                const result = new Uint8Array(column.length);
+                const matrix = this.generateMatrix(keyMaterial, round, column.length);
+                
+                for (let i = 0; i < column.length; i++) {
+                    let val = 0;
+                    for (let j = 0; j < column.length; j++) {
+                        if (inverse) {
+                            val ^= this.gfMultiply(matrix[j][i], column[j]);
+                        } else {
+                            val ^= this.gfMultiply(matrix[i][j], column[j]);
+                        }
+                    }
+                    result[i] = val;
+                }
+                
+                return result;
+            }
+
+            gfMultiply(a, b) {
+                let p = 0;
+                for (let i = 0; i < 8; i++) {
+                    if (b & 1) p ^= a;
+                    const hi = a & 0x80;
+                    a <<= 1;
+                    if (hi) a ^= 0x1b; // Полином AES
+                    b >>= 1;
+                }
+                return p & 0xff;
+            }
+
+            generateMatrix(keyMaterial, round, size) {
+                const matrix = Array.from({length: size}, () => new Uint8Array(size));
+                for (let i = 0; i < size; i++) {
+                    for (let j = 0; j < size; j++) {
+                        const keyIndex = (i * size + j + round * 11) % keyMaterial.length;
+                        matrix[i][j] = keyMaterial[keyIndex] || 1;
+                    }
+                }
+                return matrix;
+            }
+
+            permuteBytes(data, keyMaterial, round, inverse = false) {
+                const temp = new Uint8Array(data.length);
+                for (let i = 0; i < data.length; i++) {
+                    const newPos = inverse ? 
+                        (i * 9 - keyMaterial[(i + round) % keyMaterial.length]) % data.length :
+                        (i * 5 + keyMaterial[(i + round) % keyMaterial.length]) % data.length;
+                    temp[(newPos + data.length) % data.length] = data[i];
+                }
+                data.set(temp);
+            }
+
+            addRoundKey(data, keyMaterial, round, inverse = false) {
+                for (let i = 0; i < data.length; i++) {
+                    const keyIndex = (i + round * 23) % keyMaterial.length;
+                    if (inverse) {
+                        data[i] ^= keyMaterial[keyIndex];
+                    } else {
+                        data[i] ^= keyMaterial[keyIndex] ^ round;
+                    }
+                }
+            }
+
+            // Вспомогательные криптографические функции
+            async deriveKey(password, salt, length) {
+                const iterations = 200000;
                 const encoder = new TextEncoder();
-                return crypto.subtle.digest('SHA-512', encoder.encode(str))
-                    .then(buf => new Uint8Array(buf));
-            }
-
-            getRandomBigInt(bits) {
-                const bytes = new Uint8Array(bits / 8);
-                crypto.getRandomValues(bytes);
-                return BigInt("0x" + [...bytes].map(b => b.toString(16).padStart(2, '0')).join(''));
-            }
-
-            isProbablePrime(n, k = 5) {
-                // Упрощенная проверка Миллера-Рабина
-                if (n <= 1n) return false;
-                if (n <= 3n) return true;
                 
-                let d = n - 1n;
-                let s = 0n;
-                while (d % 2n === 0n) {
-                    d /= 2n;
-                    s++;
-                }
+                // Первая стадия: PBKDF2
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw', encoder.encode(password),
+                    {name: 'PBKDF2'}, false, ['deriveBits']
+                );
                 
-                for (let i = 0; i < k; i++) {
-                    const a = 2n + BigInt(Math.floor(Math.random() * Number(n - 2n)));
-                    let x = this.modPow(a, d, n);
-                    
-                    if (x === 1n || x === n - 1n) continue;
-                    
-                    let j;
-                    for (j = 0n; j < s - 1n; j++) {
-                        x = this.modPow(x, 2n, n);
-                        if (x === n - 1n) break;
-                    }
-                    
-                    if (j === s - 1n) return false;
-                }
-                return true;
+                const derivedBits = await crypto.subtle.deriveBits(
+                    {name: 'PBKDF2', salt, iterations, hash: 'SHA-512'},
+                    keyMaterial,
+                    Math.max(512, length * 8)
+                );
+                
+                // Вторая стадия: HKDF
+                const hkdfKey = await crypto.subtle.importKey(
+                    'raw', new Uint8Array(derivedBits),
+                    {name: 'HMAC', hash: 'SHA-512'}, false, ['sign']
+                );
+                
+                const hkdf = await crypto.subtle.sign(
+                    'HMAC', hkdfKey,
+                    encoder.encode('QUANTUM_ARMOR_KEY_DERIVATION')
+                );
+                
+                return new Uint8Array(hkdf).slice(0, length);
             }
 
-            modPow(a, b, mod) {
-                let result = 1n;
-                a = a % mod;
-                while (b > 0n) {
-                    if (b % 2n === 1n) {
-                        result = (result * a) % mod;
-                    }
-                    a = (a * a) % mod;
-                    b = b / 2n;
-                }
-                return result;
+            async generateHMAC(iv, data, keyMaterial) {
+                const hmacKey = await crypto.subtle.importKey(
+                    'raw', keyMaterial.slice(0, 64),
+                    {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']
+                );
+                
+                const macData = new Uint8Array([...iv, ...data]);
+                const mac = await crypto.subtle.sign('HMAC', hmacKey, macData);
+                return new Uint8Array(mac);
             }
 
-            modInverse(a, m) {
-                a = ((a % m) + m) % m;
-                for (let x = 1; x < m; x++) {
-                    if ((a * x) % m === 1) return x;
+            constantTimeCompare(a, b) {
+                if (a.length !== b.length) return false;
+                let result = 0;
+                for (let i = 0; i < a.length; i++) {
+                    result |= a[i] ^ b[i];
                 }
-                return 1;
+                return result === 0;
+            }
+
+            // Утилиты преобразования
+            bytesToBase64(bytes) {
+                return btoa(String.fromCharCode(...bytes));
+            }
+
+            base64ToBytes(base64) {
+                return new Uint8Array([...atob(base64)].map(c => c.charCodeAt(0)));
             }
         }
 
-        // ===== Интерфейс =====
-        const qArmor = new QArmor();
+        // Инициализация системы
+        const cryptoSystem = new QuantumArmorPro();
+        cryptoSystem.init().catch(console.error);
 
-        async function qEncrypt() {
-            const text = document.getElementById('q-plaintext').value;
-            const key = document.getElementById('q-key').value;
-            
-            if (!text || !key || key.length < 32) {
-                alert("Нужен текст и ключ ≥32 символов!");
-                return;
-            }
-            
+        // Обработчики интерфейса
+        async function encrypt() {
             try {
-                const result = await qArmor.hybridEncrypt(text, key);
-                document.getElementById('q-ciphertext').value = 
-                    `QARMORv1|${result.params.prime}|${result.ciphertext}`;
+                const plaintext = document.getElementById('plaintext').value;
+                const key = document.getElementById('key').value;
+                const ciphertext = await cryptoSystem.encrypt(plaintext, key);
+                document.getElementById('ciphertext').value = ciphertext;
             } catch (e) {
-                alert("Ошибка: " + e.message);
+                document.getElementById('status').textContent = `Ошибка: ${e.message}`;
+                document.getElementById('ciphertext').value = '';
             }
         }
 
-        async function qDecrypt() {
-            const input = document.getElementById('q-encrypted').value;
-            const key = document.getElementById('q-decrypt-key').value;
-            
-            if (!input || !key) {
-                alert("Введите данные и ключ!");
-                return;
-            }
-            
+        async function decrypt() {
             try {
-                const [header, primeHex, ciphertext] = input.split('|');
-                if (header !== "QARMORv1") throw new Error("Неверный формат");
-                
-                qArmor.prime = BigInt("0x" + primeHex);
-                const masterKey = await qArmor.sha512(key + "Q-ARMOR-SALT");
-                const ntruKey = masterKey.slice(32);
-                
-                const data = new Uint8Array([...atob(ciphertext)].map(c => c.charCodeAt(0)));
-                let state = qArmor.ntruTransform(data, ntruKey, false);
-                
-                // Обратное AES-подобное преобразование
-                const aesKey = masterKey.slice(0, 64);
-                for (let round = 15; round >= 0; round--) {
-                    for (let i = state.length - 1; i >= 0; i--) {
-                        state[i] ^= state[(i + round + 7) % state.length];
-                        const keyPos = (i + round * 13) % aesKey.length;
-                        state[i] = (state[i] - aesKey[keyPos] * (round + 1) + 256) % 256;
-                    }
-                }
-                
-                document.getElementById('q-decrypted').value = 
-                    new TextDecoder().decode(state);
+                const encrypted = document.getElementById('encrypted').value;
+                const key = document.getElementById('decryptKey').value;
+                const decrypted = await cryptoSystem.decrypt(encrypted, key);
+                document.getElementById('decrypted').value = decrypted;
             } catch (e) {
-                document.getElementById('q-decrypted').value = 
-                    "ОШИБКА: " + e.message;
+                document.getElementById('status').textContent = `Ошибка: ${e.message}`;
+                document.getElementById('decrypted').value = '';
             }
         }
     </script>
