@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Роторный шифратор</title>
+    <title>Роторный шифратор PRO</title>
     <style>
         :root {
             --primary: #4a6fa5;
@@ -160,35 +160,34 @@
 </head>
 <body>
     <div class="container">
-        <h1>Роторный шифратор</h1>
+        <h1>Роторный шифратор PRO</h1>
         
         <div class="tab-container">
             <div class="tab active" onclick="openTab('encrypt-tab')">Шифрование</div>
             <div class="tab" onclick="openTab('settings-tab')">Настройки</div>
-            <div class="tab" onclick="openTab('history-tab')">История</div>
         </div>
         
         <div id="encrypt-tab" class="tab-content active">
             <div class="settings-panel">
                 <div class="form-group">
-                    <label for="rotors">Роторы (через запятую):</label>
-                    <input type="text" id="rotors" value="12,-5,7,13,-2,9,7,1,-1" placeholder="Введите значения роторов, например: 3,-5,7">
+                    <label for="custom-alphabet">Алфавит для шифрования:</label>
+                    <input type="text" id="custom-alphabet" value="АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ" required>
                 </div>
                 
                 <div class="form-group">
-                    <label for="custom-alphabet">Пользовательский алфавит (необязательно):</label>
-                    <input type="text" id="custom-alphabet" placeholder="ABCDEFGHIJKLMNOPQRSTUVWXYZ">
+                    <label for="rotors">Роторы (через запятую):</label>
+                    <input type="text" id="rotors" value="5,-3,7" placeholder="Например: 5,-3,7">
                 </div>
             </div>
             
             <div class="form-group">
-                <label for="input-text">Исходный текст:</label>
+                <label for="input-text">Исходный текст (все не-алфавитные символы будут удалены):</label>
                 <textarea id="input-text" placeholder="Введите текст для шифрования..."></textarea>
             </div>
             
             <div class="btn-group">
-                <button onclick="encrypt()">Зашифровать</button>
-                <button onclick="decrypt()">Расшифровать</button>
+                <button onclick="processText(true)">Зашифровать</button>
+                <button onclick="processText(false)">Расшифровать</button>
                 <button onclick="clearText()">Очистить</button>
             </div>
             
@@ -205,159 +204,98 @@
                     <select id="ui-theme">
                         <option value="light">Светлая</option>
                         <option value="dark">Темная</option>
-                        <option value="blue">Синяя</option>
                     </select>
                 </div>
                 
                 <div class="form-group">
-                    <label>Управление роторами:</label>
-                    <div id="rotor-controls-container">
-                        <!-- Динамически добавляемые роторы -->
-                    </div>
-                    <button class="add-rotor" onclick="addRotorControl()">+ Добавить ротор</button>
-                </div>
-                
-                <div class="form-group">
                     <label>
-                        <input type="checkbox" id="save-history"> Сохранять историю операций
+                        <input type="checkbox" id="auto-clear" checked> Автоочистка не-алфавитных символов
                     </label>
                 </div>
-            </div>
-        </div>
-        
-        <div id="history-tab" class="tab-content">
-            <div class="settings-panel">
-                <h3>История операций</h3>
-                <div id="history-list">
-                    <!-- История будет добавляться сюда -->
-                </div>
-                <button onclick="clearHistory()">Очистить историю</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Инициализация приложения
+        // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
-            // Загружаем настройки из localStorage
             loadSettings();
             
-            // Добавляем несколько роторов по умолчанию
-            addRotorControl(12);
-            addRotorControl(-5);
-            addRotorControl(7);
-            
-            // Загружаем историю
-            loadHistory();
+            // Обработчик для автоматической очистки текста
+            document.getElementById('input-text').addEventListener('input', function() {
+                if(document.getElementById('auto-clear').checked) {
+                    this.value = cleanText(this.value);
+                }
+            });
         });
         
-        // Функции для работы с вкладками
-        function openTab(tabId) {
-            // Скрываем все вкладки
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Убираем активный класс у всех кнопок вкладок
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Показываем выбранную вкладку
-            document.getElementById(tabId).classList.add('active');
-            
-            // Добавляем активный класс к выбранной кнопке
-            event.currentTarget.classList.add('active');
+        // Очистка текста от не-алфавитных символов
+        function cleanText(text) {
+            const alphabet = getAlphabet();
+            return text.split('').filter(c => alphabet.includes(c.toUpperCase())).join('');
         }
         
-        // Класс для роторного шифрования
-        class RotorCipher {
-            constructor(rotors, alphabet = null) {
-                this.rotors = rotors;
-                this.alphabet = alphabet || 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-                this.alphabetLength = this.alphabet.length;
-            }
-            
-            processText(text, encrypt = true) {
-                let result = '';
-                let rotorIndex = 0;
-                
-                for (let i = 0; i < text.length; i++) {
-                    const char = text[i];
-                    const pos = this.alphabet.indexOf(char);
-                    
-                    if (pos === -1) {
-                        result += char;
-                        continue;
-                    }
-                    
-                    const rotor = this.rotors[rotorIndex % this.rotors.length];
-                    let shift = encrypt ? rotor : -rotor;
-                    
-                    let newPos = (pos + shift) % this.alphabetLength;
-                    if (newPos < 0) {
-                        newPos += this.alphabetLength;
-                    }
-                    
-                    result += this.alphabet[newPos];
-                    rotorIndex++;
-                }
-                
-                return result;
-            }
-            
-            encrypt(text) {
-                return this.processText(text, true);
-            }
-            
-            decrypt(text) {
-                return this.processText(text, false);
-            }
+        // Получение текущего алфавита
+        function getAlphabet() {
+            return document.getElementById('custom-alphabet').value.toUpperCase();
         }
         
-        // Функции UI
-        function encrypt() {
-            const inputText = document.getElementById('input-text').value;
-            if (!inputText.trim()) {
-                alert('Введите текст для шифрования');
+        // Получение роторов
+        function getRotors() {
+            const rotorsInput = document.getElementById('rotors').value;
+            return rotorsInput.split(',')
+                .map(r => parseInt(r.trim()))
+                .filter(r => !isNaN(r) && r !== 0);
+        }
+        
+        // Основная функция обработки текста
+        function processText(encrypt) {
+            const inputText = cleanText(document.getElementById('input-text').value);
+            if (!inputText) {
+                alert('Введите текст для обработки');
                 return;
             }
             
-            const rotors = getRotorsFromInput();
+            const alphabet = getAlphabet();
+            const rotors = getRotors();
+            
             if (rotors.length === 0) {
-                alert('Добавьте хотя бы один ротор');
+                alert('Укажите хотя бы один ротор');
                 return;
             }
             
-            const customAlphabet = document.getElementById('custom-alphabet').value;
-            const cipher = new RotorCipher(rotors, customAlphabet || null);
+            if (alphabet.length === 0) {
+                alert('Укажите алфавит');
+                return;
+            }
             
-            const result = cipher.encrypt(inputText);
+            const result = rotorCipher(inputText, alphabet, rotors, encrypt);
             document.getElementById('output-text').value = result;
-            
-            saveToHistory('Зашифровано', inputText, result, rotors);
         }
         
-        function decrypt() {
-            const inputText = document.getElementById('input-text').value;
-            if (!inputText.trim()) {
-                alert('Введите текст для дешифрования');
-                return;
+        // Реализация роторного шифра
+        function rotorCipher(text, alphabet, rotors, encrypt) {
+            const alphaLen = alphabet.length;
+            let result = '';
+            let rotorIndex = 0;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i].toUpperCase();
+                const pos = alphabet.indexOf(char);
+                
+                if (pos === -1) continue;
+                
+                const rotor = rotors[rotorIndex % rotors.length];
+                const shift = encrypt ? rotor : -rotor;
+                
+                let newPos = (pos + shift) % alphaLen;
+                if (newPos < 0) newPos += alphaLen;
+                
+                result += alphabet[newPos];
+                rotorIndex++;
             }
             
-            const rotors = getRotorsFromInput();
-            if (rotors.length === 0) {
-                alert('Добавьте хотя бы один ротор');
-                return;
-            }
-            
-            const customAlphabet = document.getElementById('custom-alphabet').value;
-            const cipher = new RotorCipher(rotors, customAlphabet || null);
-            
-            const result = cipher.decrypt(inputText);
-            document.getElementById('output-text').value = result;
-            
-            saveToHistory('Расшифровано', inputText, result, rotors);
+            return result;
         }
         
         function clearText() {
@@ -365,161 +303,57 @@
             document.getElementById('output-text').value = '';
         }
         
-        function getRotorsFromInput() {
-            const rotorsInput = document.getElementById('rotors').value;
-            if (rotorsInput.trim()) {
-                return rotorsInput.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
-            }
-            
-            // Альтернативно: получить из динамических контролов
-            const rotorInputs = document.querySelectorAll('.rotor-input');
-            const rotors = [];
-            
-            rotorInputs.forEach(input => {
-                const value = parseInt(input.value);
-                if (!isNaN(value) && value !== 0) {
-                    rotors.push(value);
-                }
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
             });
             
-            return rotors;
-        }
-        
-        function addRotorControl(value = 0) {
-            const container = document.getElementById('rotor-controls-container');
-            const div = document.createElement('div');
-            div.className = 'rotor-controls';
-            
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.className = 'rotor-input';
-            input.value = value;
-            input.min = -26;
-            input.max = 26;
-            input.placeholder = 'Значение ротора (-26..26)';
-            
-            const btn = document.createElement('button');
-            btn.textContent = '×';
-            btn.onclick = function() {
-                container.removeChild(div);
-            };
-            
-            div.appendChild(input);
-            div.appendChild(btn);
-            container.appendChild(div);
-        }
-        
-        // Работа с историей
-        function saveToHistory(operation, input, output, rotors) {
-            if (!document.getElementById('save-history').checked) return;
-            
-            const history = JSON.parse(localStorage.getItem('rotorCipherHistory') || '[]');
-            const date = new Date().toLocaleString();
-            
-            history.unshift({
-                date,
-                operation,
-                input,
-                output,
-                rotors: rotors.join(',')
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
             });
             
-            // Ограничиваем историю 50 записями
-            if (history.length > 50) {
-                history.pop();
-            }
-            
-            localStorage.setItem('rotorCipherHistory', JSON.stringify(history));
-            loadHistory();
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
         }
         
-        function loadHistory() {
-            const history = JSON.parse(localStorage.getItem('rotorCipherHistory') || '[]');
-            const container = document.getElementById('history-list');
-            container.innerHTML = '';
-            
-            if (history.length === 0) {
-                container.innerHTML = '<p>История операций пуста</p>';
-                return;
-            }
-            
-            history.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'history-item';
-                div.innerHTML = `
-                    <strong>${item.date}</strong> - ${item.operation}
-                    <div style="color: #666; font-size: 0.9em;">Роторы: ${item.rotors}</div>
-                    <div style="margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                        "${item.input}" → "${item.output}"
-                    </div>
-                `;
-                
-                div.onclick = function() {
-                    document.getElementById('input-text').value = item.input;
-                    document.getElementById('output-text').value = item.output;
-                    document.getElementById('rotors').value = item.rotors;
-                    openTab('encrypt-tab');
-                };
-                
-                container.appendChild(div);
-            });
-        }
-        
-        function clearHistory() {
-            if (confirm('Очистить всю историю операций?')) {
-                localStorage.removeItem('rotorCipherHistory');
-                loadHistory();
-            }
-        }
-        
-        // Работа с настройками
         function loadSettings() {
-            const settings = JSON.parse(localStorage.getItem('rotorCipherSettings') || '{}');
+            const settings = JSON.parse(localStorage.getItem('rotorSettings') || '{}');
             
             if (settings.theme) {
                 document.getElementById('ui-theme').value = settings.theme;
                 applyTheme(settings.theme);
             }
             
-            if (settings.saveHistory) {
-                document.getElementById('save-history').checked = settings.saveHistory;
+            if (settings.autoClear !== undefined) {
+                document.getElementById('auto-clear').checked = settings.autoClear;
             }
         }
         
         function saveSettings() {
             const settings = {
                 theme: document.getElementById('ui-theme').value,
-                saveHistory: document.getElementById('save-history').checked
+                autoClear: document.getElementById('auto-clear').checked
             };
             
-            localStorage.setItem('rotorCipherSettings', JSON.stringify(settings));
+            localStorage.setItem('rotorSettings', JSON.stringify(settings));
             applyTheme(settings.theme);
         }
         
         function applyTheme(theme) {
             const root = document.documentElement;
             
-            switch (theme) {
-                case 'dark':
-                    root.style.setProperty('--light', '#2d2d2d');
-                    root.style.setProperty('--dark', '#f5f5f5');
-                    root.style.setProperty('--primary', '#3a506b');
-                    root.style.setProperty('--secondary', '#1c2541');
-                    document.body.style.backgroundColor = '#1a1a1a';
-                    break;
-                    
-                case 'blue':
-                    root.style.setProperty('--primary', '#1976d2');
-                    root.style.setProperty('--secondary', '#0d47a1');
-                    root.style.setProperty('--accent', '#82b1ff');
-                    break;
-                    
-                default: // light
-                    root.style.setProperty('--light', '#f5f5f5');
-                    root.style.setProperty('--dark', '#0a1128');
-                    root.style.setProperty('--primary', '#4a6fa5');
-                    root.style.setProperty('--secondary', '#166088');
-                    document.body.style.backgroundColor = '';
+            if (theme === 'dark') {
+                root.style.setProperty('--light', '#2d2d2d');
+                root.style.setProperty('--dark', '#f5f5f5');
+                root.style.setProperty('--primary', '#3a506b');
+                root.style.setProperty('--secondary', '#1c2541');
+                document.body.style.backgroundColor = '#1a1a1a';
+            } else {
+                root.style.setProperty('--light', '#f5f5f5');
+                root.style.setProperty('--dark', '#0a1128');
+                root.style.setProperty('--primary', '#4a6fa5');
+                root.style.setProperty('--secondary', '#166088');
+                document.body.style.backgroundColor = '';
             }
         }
         
@@ -528,7 +362,7 @@
             saveSettings();
         });
         
-        document.getElementById('save-history').addEventListener('change', function() {
+        document.getElementById('auto-clear').addEventListener('change', function() {
             saveSettings();
         });
     </script>
