@@ -684,7 +684,7 @@
                         <h4><i class="fas fa-font"></i> Alphabet Settings</h4>
                         <div class="form-group">
                             <label for="alphabet">Alphabet (64 unique characters)</label>
-                            <textarea id="alphabet" rows="3">ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?</textarea>
+                            <textarea id="alphabet" rows="3">ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz#×</textarea>
                         </div>
                         
                         <div class="form-group">
@@ -839,7 +839,7 @@
         class SecureTrifidCipher {
             constructor() {
                 this.cubes = [];
-                this.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?";
+                this.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz#×";
                 this.fillerChar = "~";
                 this.encryptionKey = "";
                 this.rounds = 5;
@@ -1971,7 +1971,7 @@
             }
 
             resetToDefault() {
-                document.getElementById('alphabet').value = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?';
+                document.getElementById('alphabet').value = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz#×';
                 document.getElementById('filler').value = '~';
                 document.getElementById('encryptionKey').value = '';
                 document.getElementById('rounds').value = '5';
