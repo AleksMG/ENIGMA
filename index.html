@@ -575,6 +575,43 @@
             opacity: 1;
         }
 
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--box-shadow);
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray);
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 1rem;
@@ -647,7 +684,7 @@
                         <h4><i class="fas fa-font"></i> Alphabet Settings</h4>
                         <div class="form-group">
                             <label for="alphabet">Alphabet (64 unique characters)</label>
-                            <textarea id="alphabet" rows="3" placeholder="Enter exactly 64 unique characters">ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz×+</textarea>
+                            <textarea id="alphabet" rows="3">ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?</textarea>
                         </div>
                         
                         <div class="form-group">
@@ -663,7 +700,7 @@
                                 Encryption Key
                                 <span class="tooltip">
                                     <i class="fas fa-question-circle"></i>
-                                    <span class="tooltiptext">Use a strong passphrase with at least 12 characters, including uppercase, lowercase, numbers, and symbols</span>
+                                    <span class="tooltiptext">Use a strong passphrase with at least 12 characters</span>
                                 </span>
                             </label>
                             <input type="password" id="encryptionKey" placeholder="Enter strong encryption key">
@@ -801,17 +838,22 @@
     <script>
         class SecureTrifidCipher {
             constructor() {
-                this.cubes = []; // Array to store cubes for each round
-                this.alphabet = "";
+                this.cubes = [];
+                this.alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?";
                 this.fillerChar = "~";
                 this.encryptionKey = "";
                 this.rounds = 5;
                 this.salt = window.crypto.getRandomValues(new Uint8Array(16)).join('');
+                this.fillMethod = "row";
                 this.initEventListeners();
                 this.initTheme();
                 this.setupTextPreviews();
                 this.setupPasswordStrengthMeter();
             }
+
+            // ========================
+            // Initialization Methods
+            // ========================
 
             initEventListeners() {
                 // Tab switching
@@ -845,7 +887,7 @@
                 document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
                 document.getElementById('saveSettings').addEventListener('click', () => this.saveSettingsToFile());
                 document.getElementById('settingsFileInput').addEventListener('change', (e) => this.loadSettingsFromFile(e));
-                document.getElementById('advancedSettings').addEventListener('click', () => alert("Advanced settings would be configured here"));
+                document.getElementById('advancedSettings').addEventListener('click', () => this.showAdvancedSettings());
                 
                 // Dynamic updates
                 document.getElementById('encryptionKey').addEventListener('input', (e) => {
@@ -867,81 +909,9 @@
             }
 
             setupPasswordStrengthMeter() {
-                const passwordInput = document.getElementById('encryptionKey');
-                passwordInput.addEventListener('input', (e) => {
+                document.getElementById('encryptionKey').addEventListener('input', (e) => {
                     this.updatePasswordStrength(e.target.value);
                 });
-            }
-
-            updatePasswordStrength(password) {
-                let strength = 0;
-                const meter = document.getElementById('securityMeter');
-                const strengthText = document.getElementById('passwordStrength');
-                
-                // Reset
-                strengthText.querySelectorAll('span').forEach(span => span.classList.remove('active'));
-                
-                if (!password) {
-                    meter.style.width = '0%';
-                    return;
-                }
-                
-                // Length check
-                if (password.length >= 8) strength++;
-                if (password.length >= 12) strength++;
-                
-                // Complexity checks
-                if (/[A-Z]/.test(password)) strength++;
-                if (/[a-z]/.test(password)) strength++;
-                if (/[0-9]/.test(password)) strength++;
-                if (/[^A-Za-z0-9]/.test(password)) strength++;
-                
-                // Normalize to 1-4 scale
-                strength = Math.min(4, Math.max(1, Math.floor(strength / 1.5)));
-                
-                // Update meter
-                meter.style.width = `${strength * 25}%`;
-                
-                // Update text
-                strengthText.querySelector(`span[data-level="${strength}"]`).classList.add('active');
-                
-                // Color coding
-                if (strength <= 1) {
-                    meter.style.backgroundColor = this.getThemeColor('error');
-                } else if (strength <= 2) {
-                    meter.style.backgroundColor = this.getThemeColor('warning');
-                } else {
-                    meter.style.backgroundColor = this.getThemeColor('success');
-                }
-            }
-
-            getThemeColor(type) {
-                const style = getComputedStyle(document.documentElement);
-                return style.getPropertyValue(`--${type}`);
-            }
-
-            updateTextPreview(text, elementId) {
-                if (this.cubes.length === 0) {
-                    document.getElementById(elementId).innerHTML = '<span class="warning">Please initialize cubes first</span>';
-                    return;
-                }
-
-                let previewHtml = '';
-                for (const char of text) {
-                    const coord = this.findCoordinates(char, 0); // Use first cube for preview
-                    if (coord) {
-                        previewHtml += `<span class="char-highlight" title="Layer: ${coord.layer}, Row: ${coord.row}, Col: ${coord.col}">${this.escapeHtml(char)}</span>`;
-                    } else {
-                        previewHtml += `<span class="char-skipped" title="Character not in cube - will be preserved">${this.escapeHtml(char)}</span>`;
-                    }
-                }
-                document.getElementById(elementId).innerHTML = previewHtml || '<span class="warning">No characters to preview</span>';
-            }
-
-            escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
             }
 
             initTheme() {
@@ -950,69 +920,35 @@
                 this.updateThemeIcon(savedTheme);
             }
 
-            toggleTheme() {
-                const currentTheme = document.body.getAttribute('data-theme') || 'light';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                document.body.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                this.updateThemeIcon(newTheme);
-            }
-
-            updateThemeIcon(theme) {
-                const icon = document.querySelector('#themeToggle i');
-                icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-            }
-
-            resetToDefault() {
-                document.getElementById('alphabet').value = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?';
-                document.getElementById('filler').value = '~';
-                document.getElementById('encryptionKey').value = '';
-                document.getElementById('rounds').value = '5';
-                this.encryptionKey = '';
-                this.rounds = 5;
-                this.cubes = [];
-                document.getElementById('cubesContainer').innerHTML = '';
-                document.getElementById('securityMeter').style.width = '0%';
-                document.querySelectorAll('#passwordStrength span').forEach(span => span.classList.remove('active'));
-            }
+            // ========================
+            // Core Cipher Methods
+            // ========================
 
             async initCubes() {
                 const alphabetInput = document.getElementById('alphabet').value;
                 const newFiller = document.getElementById('filler').value.trim();
                 const statusElement = document.getElementById('alphabetStatus');
 
-                // Reset status
-                statusElement.style.display = 'none';
-                statusElement.className = 'alert';
-
                 // Validate alphabet
                 if (alphabetInput.length !== 64) {
-                    statusElement.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> Error: Alphabet must be exactly 64 characters long (current: ${alphabetInput.length})`;
-                    statusElement.classList.add('alert-error');
-                    statusElement.style.display = 'block';
+                    this.showError(statusElement, `Alphabet must be exactly 64 characters (current: ${alphabetInput.length})`);
                     return false;
                 }
 
                 const uniqueChars = new Set(alphabetInput);
                 if (uniqueChars.size !== alphabetInput.length) {
-                    statusElement.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> Error: Alphabet contains duplicate characters`;
-                    statusElement.classList.add('alert-error');
-                    statusElement.style.display = 'block';
+                    this.showError(statusElement, "Alphabet contains duplicate characters");
                     return false;
                 }
 
                 // Validate filler
                 if (newFiller.length !== 1) {
-                    statusElement.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> Error: Filler must be exactly 1 character`;
-                    statusElement.classList.add('alert-error');
-                    statusElement.style.display = 'block';
+                    this.showError(statusElement, "Filler must be exactly 1 character");
                     return false;
                 }
 
                 if (alphabetInput.includes(newFiller)) {
-                    statusElement.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> Error: Filler character must NOT be in the alphabet`;
-                    statusElement.classList.add('alert-error');
-                    statusElement.style.display = 'block';
+                    this.showError(statusElement, "Filler character must NOT be in alphabet");
                     return false;
                 }
 
@@ -1031,18 +967,14 @@
                     this.updateTextPreview(document.getElementById('ciphertext').value, 'ciphertextPreview');
 
                     // Show success
-                    statusElement.innerHTML = `<i class="fas fa-check-circle status-icon"></i> Successfully generated ${this.rounds} cryptographically secure cubes`;
-                    statusElement.classList.add('alert-success');
-                    statusElement.style.display = 'block';
+                    this.showSuccess(statusElement, `Successfully generated ${this.rounds} cryptographically secure cubes`);
                     
                     // Visualize cubes
                     this.visualizeCubes();
 
                     return true;
                 } catch (error) {
-                    statusElement.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> Error during cube generation: ${error.message}`;
-                    statusElement.classList.add('alert-error');
-                    statusElement.style.display = 'block';
+                    this.showError(statusElement, `Error during cube generation: ${error.message}`);
                     console.error("Cube generation error:", error);
                     return false;
                 }
@@ -1050,27 +982,224 @@
 
             async generateAllCubes() {
                 this.cubes = [];
-                const key = this.encryptionKey || 'default_key'; // Fallback if no key provided
+                const key = this.encryptionKey;
                 
                 try {
-                    // Create master seed from key using PBKDF2
-                    const masterSeed = await this.deriveKey(key, this.salt, 100000);
-                    
-                    for (let round = 0; round < this.rounds; round++) {
-                        // Create round-specific seed using HMAC
-                        const roundSeed = await this.hmacSha256(masterSeed, round.toString());
+                    if (!key) {
+                        // Without key - use alphabetical order
+                        if (!confirm("Warning: No encryption key provided. Using default alphabetical cube order which provides NO SECURITY. Continue?")) {
+                            throw new Error("Cube generation canceled");
+                        }
+                        const cube = this.generateAlphabeticalCube();
+                        for (let round = 0; round < this.rounds; round++) {
+                            this.cubes.push(JSON.parse(JSON.stringify(cube))); // Deep copy
+                        }
+                    } else {
+                        // With key - deterministic generation
+                        const masterSeed = await this.deriveKey(key, this.salt, 100000);
                         
-                        // Generate cube for this round
-                        const cube = await this.generateCubeFromSeed(roundSeed);
-                        this.cubes.push(cube);
+                        for (let round = 0; round < this.rounds; round++) {
+                            const roundSeed = await this.hmacSha256(masterSeed, round.toString());
+                            const cube = await this.generateCubeFromSeed(roundSeed);
+                            this.cubes.push(cube);
+                        }
                     }
                     
-                    // Verify all cubes are unique
                     this.verifyCubeUniqueness();
                 } catch (error) {
                     console.error("Error in cube generation:", error);
                     throw error;
                 }
+            }
+
+            generateAlphabeticalCube() {
+                const cube = [];
+                let pos = 0;
+                
+                for (let layer = 0; layer < 4; layer++) {
+                    const cubeLayer = [];
+                    for (let row = 0; row < 4; row++) {
+                        const cubeRow = [];
+                        for (let col = 0; col < 4; col++) {
+                            cubeRow.push(this.alphabet[pos++ % this.alphabet.length]);
+                        }
+                        cubeLayer.push(cubeRow);
+                    }
+                    cube.push(cubeLayer);
+                }
+                
+                return cube;
+            }
+
+            async generateCubeFromSeed(seed) {
+                const shuffledAlphabet = await this.deterministicShuffle(this.alphabet, seed);
+                
+                switch(this.fillMethod) {
+                    case 'column': return this.fillByColumns(shuffledAlphabet);
+                    case 'diagonal': return this.fillDiagonal(shuffledAlphabet);
+                    case 'spiral': return this.fillSpiral(shuffledAlphabet);
+                    case 'checkerboard': return this.fillCheckerboard(shuffledAlphabet);
+                    default: return this.fillByRows(shuffledAlphabet);
+                }
+            }
+
+            // ========================
+            // Cube Fill Methods
+            // ========================
+
+            fillByRows(shuffledAlphabet) {
+                const cube = [];
+                let pos = 0;
+                
+                for (let layer = 0; layer < 4; layer++) {
+                    const cubeLayer = [];
+                    for (let row = 0; row < 4; row++) {
+                        const cubeRow = [];
+                        for (let col = 0; col < 4; col++) {
+                            cubeRow.push(shuffledAlphabet[pos++ % shuffledAlphabet.length]);
+                        }
+                        cubeLayer.push(cubeRow);
+                    }
+                    cube.push(cubeLayer);
+                }
+                
+                return cube;
+            }
+
+            fillByColumns(shuffledAlphabet) {
+                const cube = [];
+                let pos = 0;
+                
+                for (let layer = 0; layer < 4; layer++) {
+                    const cubeLayer = [];
+                    for (let col = 0; col < 4; col++) {
+                        const cubeCol = [];
+                        for (let row = 0; row < 4; row++) {
+                            cubeCol.push(shuffledAlphabet[pos++ % shuffledAlphabet.length]);
+                        }
+                        cubeLayer.push(cubeCol);
+                    }
+                    cube.push(cubeLayer);
+                }
+                
+                return cube;
+            }
+
+            fillDiagonal(shuffledAlphabet) {
+                const cube = [];
+                let pos = 0;
+                
+                for (let layer = 0; layer < 4; layer++) {
+                    const cubeLayer = Array(4).fill().map(() => Array(4).fill(null));
+                    
+                    // Fill diagonals
+                    for (let diag = 0; diag < 7; diag++) {
+                        for (let row = 0; row < 4; row++) {
+                            const col = diag - row;
+                            if (col >= 0 && col < 4 && cubeLayer[row][col] === null) {
+                                cubeLayer[row][col] = shuffledAlphabet[pos++ % shuffledAlphabet.length];
+                            }
+                        }
+                    }
+                    cube.push(cubeLayer);
+                }
+                
+                return cube;
+            }
+
+            fillSpiral(shuffledAlphabet) {
+                const cube = [];
+                let pos = 0;
+                
+                for (let layer = 0; layer < 4; layer++) {
+                    const cubeLayer = Array(4).fill().map(() => Array(4).fill(null));
+                    let top = 0, bottom = 3, left = 0, right = 3;
+                    let direction = 0; // 0: right, 1: down, 2: left, 3: up
+                    
+                    while (top <= bottom && left <= right) {
+                        if (direction === 0) {
+                            for (let i = left; i <= right; i++) {
+                                cubeLayer[top][i] = shuffledAlphabet[pos++ % shuffledAlphabet.length];
+                            }
+                            top++;
+                        } else if (direction === 1) {
+                            for (let i = top; i <= bottom; i++) {
+                                cubeLayer[i][right] = shuffledAlphabet[pos++ % shuffledAlphabet.length];
+                            }
+                            right--;
+                        } else if (direction === 2) {
+                            for (let i = right; i >= left; i--) {
+                                cubeLayer[bottom][i] = shuffledAlphabet[pos++ % shuffledAlphabet.length];
+                            }
+                            bottom--;
+                        } else if (direction === 3) {
+                            for (let i = bottom; i >= top; i--) {
+                                cubeLayer[i][left] = shuffledAlphabet[pos++ % shuffledAlphabet.length];
+                            }
+                            left++;
+                        }
+                        direction = (direction + 1) % 4;
+                    }
+                    cube.push(cubeLayer);
+                }
+                
+                return cube;
+            }
+
+            fillCheckerboard(shuffledAlphabet) {
+                const cube = [];
+                let pos = 0;
+                let reversePos = shuffledAlphabet.length - 1;
+                
+                for (let layer = 0; layer < 4; layer++) {
+                    const cubeLayer = [];
+                    for (let row = 0; row < 4; row++) {
+                        const cubeRow = [];
+                        for (let col = 0; col < 4; col++) {
+                            const index = (row % 2 === col % 2) 
+                                ? pos++ 
+                                : reversePos--;
+                            cubeRow.push(shuffledAlphabet[index % shuffledAlphabet.length]);
+                        }
+                        cubeLayer.push(cubeRow);
+                    }
+                    cube.push(cubeLayer);
+                }
+                
+                return cube;
+            }
+
+            // ========================
+            // Cryptographic Helpers
+            // ========================
+
+            async deterministicShuffle(array, seedString) {
+                // 1. Convert seed to bytes via HMAC-SHA256
+                const seed = await this.hmacSha256(seedString, "shuffle-seed");
+                
+                // 2. Convert hex hash to number array
+                const hashArray = [];
+                for (let i = 0; i < seed.length; i += 2) {
+                    hashArray.push(parseInt(seed.substr(i, 2), 16));
+                }
+                
+                // 3. Fisher-Yates with deterministic selection
+                const arr = array.split('');
+                let hashIndex = 0;
+                
+                for (let i = arr.length - 1; i > 0; i--) {
+                    // Get bytes from hash cyclically
+                    const randomByte = hashArray[hashIndex % hashArray.length];
+                    hashIndex++;
+                    
+                    // Calculate swap index
+                    const j = randomByte % (i + 1);
+                    
+                    // Swap
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                
+                return arr.join('');
             }
 
             async deriveKey(password, salt, iterations) {
@@ -1122,60 +1251,6 @@
                     .join('');
             }
 
-            async generateCubeFromSeed(seed) {
-                // Shuffle alphabet based on seed using Fisher-Yates
-                const shuffledAlphabet = this.seededShuffle(this.alphabet, seed);
-                
-                // Fill 4x4x4 cube
-                const cube = [];
-                let pos = 0;
-                
-                for (let layer = 0; layer < 4; layer++) {
-                    const cubeLayer = [];
-                    for (let row = 0; row < 4; row++) {
-                        const cubeRow = [];
-                        for (let col = 0; col < 4; col++) {
-                            cubeRow.push(shuffledAlphabet[pos % shuffledAlphabet.length]);
-                            pos++;
-                        }
-                        cubeLayer.push(cubeRow);
-                    }
-                    cube.push(cubeLayer);
-                }
-                
-                return cube;
-            }
-
-            seededShuffle(array, seed) {
-                // Convert seed to a number for the random generator
-                let numericSeed = 0;
-                for (let i = 0; i < seed.length; i++) {
-                    numericSeed = (numericSeed << 5) - numericSeed + seed.charCodeAt(i);
-                    numericSeed |= 0;
-                }
-                
-                // Create a seeded random generator
-                const random = this.seededRandom(numericSeed);
-                
-                // Fisher-Yates shuffle
-                const arr = array.split('');
-                for (let i = arr.length - 1; i > 0; i--) {
-                    const j = Math.floor(random() * (i + 1));
-                    [arr[i], arr[j]] = [arr[j], arr[i]];
-                }
-                
-                return arr.join('');
-            }
-
-            seededRandom(seed) {
-                // Simple seeded random generator (not cryptographically secure)
-                let x = Math.sin(seed) * 10000;
-                return () => {
-                    x = Math.sin(x) * 10000;
-                    return x - Math.floor(x);
-                };
-            }
-
             verifyCubeUniqueness() {
                 const cubeHashes = new Set();
                 
@@ -1191,7 +1266,6 @@
             }
 
             hashString(str) {
-                // Simple hash for uniqueness check
                 let hash = 0;
                 for (let i = 0; i < str.length; i++) {
                     const char = str.charCodeAt(i);
@@ -1201,104 +1275,9 @@
                 return hash.toString(36);
             }
 
-            visualizeCubes() {
-                const container = document.getElementById('cubesContainer');
-                container.innerHTML = '';
-
-                if (this.cubes.length === 0) {
-                    container.innerHTML = '<div class="alert alert-warning">No cubes generated yet</div>';
-                    return;
-                }
-
-                this.cubes.forEach((cube, roundIdx) => {
-                    const roundDiv = document.createElement('div');
-                    roundDiv.className = 'card';
-                    roundDiv.innerHTML = `
-                        <h4 class="cube-title">
-                            <span class="round-badge">${roundIdx + 1}</span>
-                            Encryption Round ${roundIdx + 1} Cube
-                        </h4>
-                    `;
-                    
-                    const grid = document.createElement('div');
-                    grid.className = 'grid-container';
-                    
-                    cube.forEach((layer, layerIdx) => {
-                        const layerDiv = document.createElement('div');
-                        layerDiv.className = 'cube-layer';
-                        
-                        const table = document.createElement('table');
-                        table.className = 'cube-table';
-                        
-                        const caption = table.createCaption();
-                        caption.textContent = `Layer ${layerIdx + 1}`;
-                        caption.style.captionSide = 'top';
-                        caption.style.marginBottom = '0.5rem';
-
-                        // Header row
-                        const headerRow = table.insertRow();
-                        const emptyHeader = headerRow.insertCell();
-                        emptyHeader.textContent = 'R\\C';
-                        emptyHeader.className = 'row-header';
-
-                        // Column headers
-                        for (let col = 0; col < 4; col++) {
-                            const th = headerRow.insertCell();
-                            th.textContent = col + 1;
-                            th.className = 'column-header';
-                        }
-
-                        // Table body
-                        layer.forEach((row, rowIdx) => {
-                            const tr = table.insertRow();
-                            const rowHeader = tr.insertCell();
-                            rowHeader.textContent = rowIdx + 1;
-                            rowHeader.className = 'row-header';
-                            
-                            row.forEach((cell, colIdx) => {
-                                const td = tr.insertCell();
-                                td.textContent = cell;
-                                td.className = 'cube-cell';
-                                td.dataset.layer = layerIdx + 1;
-                                td.dataset.row = rowIdx + 1;
-                                td.dataset.col = colIdx + 1;
-                            });
-                        });
-                        
-                        layerDiv.appendChild(table);
-                        grid.appendChild(layerDiv);
-                    });
-                    
-                    roundDiv.appendChild(grid);
-                    container.appendChild(roundDiv);
-                });
-            }
-
-            findCoordinates(char, round) {
-                if (round >= this.cubes.length) return null;
-                
-                const cube = this.cubes[round];
-                for (let layer = 0; layer < 4; layer++) {
-                    for (let row = 0; row < 4; row++) {
-                        for (let col = 0; col < 4; col++) {
-                            if (cube[layer][row][col] === char) {
-                                return { layer: layer + 1, row: row + 1, col: col + 1 };
-                            }
-                        }
-                    }
-                }
-                return null;
-            }
-
-            getCharFromCoordinates(layer, row, col, round) {
-                if (round >= this.cubes.length || 
-                    layer < 1 || layer > 4 || 
-                    row < 1 || row > 4 || 
-                    col < 1 || col > 4) {
-                    return this.fillerChar;
-                }
-                return this.cubes[round][layer - 1][row - 1][col - 1];
-            }
+            // ========================
+            // Encryption/Decryption
+            // ========================
 
             async encrypt() {
                 const plaintext = document.getElementById('plaintext').value;
@@ -1317,7 +1296,6 @@
                     let stepsHTML = '<div class="card"><h3><i class="fas fa-sync-alt"></i> Multi-Round Encryption Process</h3>';
                     stepsHTML += `<p>Using ${this.rounds} encryption rounds with key-based cubes</p>`;
 
-                    // Perform encryption in multiple rounds
                     for (let round = 0; round < this.rounds; round++) {
                         stepsHTML += `<div class="card"><h4><span class="round-badge">${round+1}</span> Encryption Round ${round+1}/${this.rounds}</h4>`;
                         
@@ -1674,6 +1652,69 @@
                 };
             }
 
+            // ========================
+            // Helper Methods
+            // ========================
+
+            findCoordinates(char, round) {
+                if (round >= this.cubes.length) return null;
+                
+                const cube = this.cubes[round];
+                for (let layer = 0; layer < 4; layer++) {
+                    for (let row = 0; row < 4; row++) {
+                        for (let col = 0; col < 4; col++) {
+                            if (cube[layer][row][col] === char) {
+                                return { layer: layer + 1, row: row + 1, col: col + 1 };
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+
+            getCharFromCoordinates(layer, row, col, round) {
+                if (round >= this.cubes.length || 
+                    layer < 1 || layer > 4 || 
+                    row < 1 || row > 4 || 
+                    col < 1 || col > 4) {
+                    return this.fillerChar;
+                }
+                return this.cubes[round][layer - 1][row - 1][col - 1];
+            }
+
+            updateTextPreview(text, elementId) {
+                if (this.cubes.length === 0) {
+                    document.getElementById(elementId).innerHTML = '<span class="warning">Please initialize cubes first</span>';
+                    return;
+                }
+
+                let previewHtml = '';
+                for (const char of text) {
+                    const coord = this.findCoordinates(char, 0); // Use first cube for preview
+                    if (coord) {
+                        previewHtml += `<span class="char-highlight" title="Layer: ${coord.layer}, Row: ${coord.row}, Col: ${coord.col}">${this.escapeHtml(char)}</span>`;
+                    } else {
+                        previewHtml += `<span class="char-skipped" title="Character not in cube - will be preserved">${this.escapeHtml(char)}</span>`;
+                    }
+                }
+                document.getElementById(elementId).innerHTML = previewHtml || '<span class="warning">No characters to preview</span>';
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            chunkString(str, size) {
+                if (!str) return '';
+                const chunks = [];
+                for (let i = 0; i < str.length; i += size) {
+                    chunks.push(str.substr(i, size));
+                }
+                return chunks.join(' ');
+            }
+
             loadSampleText(type) {
                 const samples = {
                     plain: "This is a highly confidential message to encrypt using the Secure Trifid Cipher Pro! It contains numbers 12345 and symbols @#$%^.",
@@ -1725,13 +1766,247 @@
                 return ciphertext;
             }
 
-            chunkString(str, size) {
-                if (!str) return '';
-                const chunks = [];
-                for (let i = 0; i < str.length; i += size) {
-                    chunks.push(str.substr(i, size));
+            // ========================
+            // UI Methods
+            // ========================
+
+            showAdvancedSettings() {
+                const modalHtml = `
+                    <div class="modal-overlay">
+                        <div class="modal-content">
+                            <button class="modal-close">&times;</button>
+                            <h3><i class="fas fa-cogs"></i> Advanced Settings</h3>
+                            
+                            <div class="form-group">
+                                <label for="fillMethod">Cube Fill Method:</label>
+                                <select id="fillMethod">
+                                    <option value="row">By Rows (Default)</option>
+                                    <option value="column">By Columns</option>
+                                    <option value="diagonal">Diagonal</option>
+                                    <option value="spiral">Spiral</option>
+                                    <option value="checkerboard">Checkerboard</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="saltInput">PBKDF2 Salt</label>
+                                <input type="text" id="saltInput" value="${this.salt}">
+                                <button class="btn" id="generateSalt">Generate New Salt</button>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="iterations">PBKDF2 Iterations (10,000-1,000,000)</label>
+                                <input type="number" id="iterations" value="100000" min="10000" max="1000000">
+                            </div>
+                            
+                            <div class="btn-group">
+                                <button class="btn" id="saveAdvanced">Save Settings</button>
+                                <button class="btn btn-outline" id="cancelAdvanced">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const modal = document.createElement('div');
+                modal.innerHTML = modalHtml;
+                document.body.appendChild(modal);
+                
+                // Set current values
+                modal.querySelector('#fillMethod').value = this.fillMethod;
+                modal.querySelector('#iterations').value = 100000;
+                
+                // Event handlers
+                modal.querySelector('#generateSalt').addEventListener('click', () => {
+                    this.salt = window.crypto.getRandomValues(new Uint8Array(16)).join('');
+                    modal.querySelector('#saltInput').value = this.salt;
+                });
+                
+                modal.querySelector('#saveAdvanced').addEventListener('click', () => {
+                    this.fillMethod = modal.querySelector('#fillMethod').value;
+                    this.salt = modal.querySelector('#saltInput').value;
+                    modal.remove();
+                });
+                
+                const closeModal = () => modal.remove();
+                modal.querySelector('.modal-close').addEventListener('click', closeModal);
+                modal.querySelector('#cancelAdvanced').addEventListener('click', closeModal);
+                modal.querySelector('.modal-overlay').addEventListener('click', (e) => {
+                    if (e.target === modal.querySelector('.modal-overlay')) {
+                        closeModal();
+                    }
+                });
+            }
+
+            visualizeCubes() {
+                const container = document.getElementById('cubesContainer');
+                container.innerHTML = '';
+
+                if (this.cubes.length === 0) {
+                    container.innerHTML = '<div class="alert alert-warning">No cubes generated yet</div>';
+                    return;
                 }
-                return chunks.join(' ');
+
+                this.cubes.forEach((cube, roundIdx) => {
+                    const roundDiv = document.createElement('div');
+                    roundDiv.className = 'card';
+                    roundDiv.innerHTML = `
+                        <h4 class="cube-title">
+                            <span class="round-badge">${roundIdx + 1}</span>
+                            Encryption Round ${roundIdx + 1} Cube
+                        </h4>
+                    `;
+                    
+                    const grid = document.createElement('div');
+                    grid.className = 'grid-container';
+                    
+                    cube.forEach((layer, layerIdx) => {
+                        const layerDiv = document.createElement('div');
+                        layerDiv.className = 'cube-layer';
+                        
+                        const table = document.createElement('table');
+                        table.className = 'cube-table';
+                        
+                        const caption = table.createCaption();
+                        caption.textContent = `Layer ${layerIdx + 1}`;
+                        caption.style.captionSide = 'top';
+                        caption.style.marginBottom = '0.5rem';
+
+                        // Header row
+                        const headerRow = table.insertRow();
+                        const emptyHeader = headerRow.insertCell();
+                        emptyHeader.textContent = 'R\\C';
+                        emptyHeader.className = 'row-header';
+
+                        // Column headers
+                        for (let col = 0; col < 4; col++) {
+                            const th = headerRow.insertCell();
+                            th.textContent = col + 1;
+                            th.className = 'column-header';
+                        }
+
+                        // Table body
+                        layer.forEach((row, rowIdx) => {
+                            const tr = table.insertRow();
+                            const rowHeader = tr.insertCell();
+                            rowHeader.textContent = rowIdx + 1;
+                            rowHeader.className = 'row-header';
+                            
+                            row.forEach((cell, colIdx) => {
+                                const td = tr.insertCell();
+                                td.textContent = cell;
+                                td.className = 'cube-cell';
+                                td.dataset.layer = layerIdx + 1;
+                                td.dataset.row = rowIdx + 1;
+                                td.dataset.col = colIdx + 1;
+                            });
+                        });
+                        
+                        layerDiv.appendChild(table);
+                        grid.appendChild(layerDiv);
+                    });
+                    
+                    roundDiv.appendChild(grid);
+                    container.appendChild(roundDiv);
+                });
+            }
+
+            updatePasswordStrength(password) {
+                let strength = 0;
+                const meter = document.getElementById('securityMeter');
+                const strengthText = document.getElementById('passwordStrength');
+                
+                // Reset
+                strengthText.querySelectorAll('span').forEach(span => span.classList.remove('active'));
+                
+                if (!password) {
+                    meter.style.width = '0%';
+                    return;
+                }
+                
+                // Length check
+                if (password.length >= 8) strength++;
+                if (password.length >= 12) strength++;
+                
+                // Complexity checks
+                if (/[A-Z]/.test(password)) strength++;
+                if (/[a-z]/.test(password)) strength++;
+                if (/[0-9]/.test(password)) strength++;
+                if (/[^A-Za-z0-9]/.test(password)) strength++;
+                
+                // Normalize to 1-4 scale
+                strength = Math.min(4, Math.max(1, Math.floor(strength / 1.5)));
+                
+                // Update meter
+                meter.style.width = `${strength * 25}%`;
+                
+                // Update text
+                strengthText.querySelector(`span[data-level="${strength}"]`).classList.add('active');
+                
+                // Color coding
+                if (strength <= 1) {
+                    meter.style.backgroundColor = this.getThemeColor('error');
+                } else if (strength <= 2) {
+                    meter.style.backgroundColor = this.getThemeColor('warning');
+                } else {
+                    meter.style.backgroundColor = this.getThemeColor('success');
+                }
+            }
+
+            getThemeColor(type) {
+                const style = getComputedStyle(document.documentElement);
+                return style.getPropertyValue(`--${type}`);
+            }
+
+            toggleTheme() {
+                const currentTheme = document.body.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                document.body.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                this.updateThemeIcon(newTheme);
+            }
+
+            updateThemeIcon(theme) {
+                const icon = document.querySelector('#themeToggle i');
+                icon.className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+
+            resetToDefault() {
+                document.getElementById('alphabet').value = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{}|;:,.<>?';
+                document.getElementById('filler').value = '~';
+                document.getElementById('encryptionKey').value = '';
+                document.getElementById('rounds').value = '5';
+                this.encryptionKey = '';
+                this.rounds = 5;
+                this.cubes = [];
+                document.getElementById('cubesContainer').innerHTML = '';
+                document.getElementById('securityMeter').style.width = '0%';
+                document.querySelectorAll('#passwordStrength span').forEach(span => span.classList.remove('active'));
+            }
+
+            showError(element, message) {
+                element.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> ${message}`;
+                element.classList.remove('alert-success', 'alert-warning');
+                element.classList.add('alert-error');
+                element.style.display = 'block';
+            }
+
+            showSuccess(element, message) {
+                element.innerHTML = `<i class="fas fa-check-circle status-icon"></i> ${message}`;
+                element.classList.remove('alert-error', 'alert-warning');
+                element.classList.add('alert-success');
+                element.style.display = 'block';
+            }
+
+            switchTab(tabId) {
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+                document.getElementById(tabId).classList.add('active');
             }
 
             async copyToClipboard(elementId, feedbackId) {
@@ -1749,18 +2024,6 @@
                 }
             }
 
-            switchTab(tabId) {
-                document.querySelectorAll('.tab').forEach(tab => {
-                    tab.classList.remove('active');
-                });
-                document.querySelectorAll('.tab-content').forEach(content => {
-                    content.classList.remove('active');
-                });
-                
-                document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
-                document.getElementById(tabId).classList.add('active');
-            }
-
             saveSettingsToFile() {
                 if (this.cubes.length === 0) {
                     alert("Please initialize cubes first");
@@ -1776,6 +2039,7 @@
                     keyHash: this.hashString(this.encryptionKey),
                     rounds: this.rounds,
                     salt: this.salt,
+                    fillMethod: this.fillMethod,
                     cubeHashes: this.cubes.map(cube => this.hashString(JSON.stringify(cube)))
                 };
 
@@ -1825,6 +2089,7 @@
                         this.fillerChar = settings.fillerChar;
                         this.rounds = settings.rounds;
                         this.salt = settings.salt || window.crypto.getRandomValues(new Uint8Array(16)).join('');
+                        this.fillMethod = settings.fillMethod || "row";
                         
                         // Update previews
                         this.updateTextPreview(document.getElementById('plaintext').value, 'plaintextPreview');
@@ -1832,15 +2097,11 @@
                         
                         // Show success
                         const statusElement = document.getElementById('alphabetStatus');
-                        statusElement.innerHTML = `<i class="fas fa-check-circle status-icon"></i> Settings loaded successfully from file`;
-                        statusElement.classList.add('alert-success');
-                        statusElement.style.display = 'block';
+                        this.showSuccess(statusElement, "Settings loaded successfully from file");
                         
                     } catch (error) {
                         const statusElement = document.getElementById('alphabetStatus');
-                        statusElement.innerHTML = `<i class="fas fa-exclamation-circle status-icon"></i> Error loading settings: ${error.message}`;
-                        statusElement.classList.add('alert-error');
-                        statusElement.style.display = 'block';
+                        this.showError(statusElement, `Error loading settings: ${error.message}`);
                         console.error("Error loading settings:", error);
                     }
                 };
@@ -1849,9 +2110,10 @@
             }
         }
 
+        // Initialize the cipher when DOM is loaded
         document.addEventListener('DOMContentLoaded', () => {
             const cipher = new SecureTrifidCipher();
         });
     </script>
 </body>
-</html>
+    </html>
